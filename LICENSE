@@ -1,3 +1,35 @@
+Word Hammer
+===========
+
+The source code of this app and its supplemental word list (data/variable-words.txt) are
+dedicated to the public domain under CC0 1.0 Universal, the legal code of which follows.
+To the extent possible under law, the author(s) have waived all copyright and related or
+neighboring rights to this work. You may copy, modify, distribute and use it, even for
+commercial purposes, without asking permission. There is NO WARRANTY of any kind.
+
+The name "Word Hammer" and the trademark symbol are not covered by this dedication (see
+section 4(a) of the legal code below: trademark rights are not waived).
+
+THIRD-PARTY MATERIAL IS NOT COVERED. It keeps its own license, and its notices must stay with it:
+
+  CMUdict (data/cmudict.dict, data/cmudict.counts.txt, the copies in data/ and js/license.js)
+    Copyright (C) 1993-2015 Carnegie Mellon University. All rights reserved.
+    BSD-style license: data/CMUdict-LICENSE.txt, licenses/CMUdict-LICENSE.txt, js/license.js,
+    and shown in the app under Settings > Dictionary Options > Attribution & license.
+
+  Word frequencies (data/wordfreq-en.txt and data/wordfreq-en.txt.gz)
+    From wordfreq (https://github.com/LuminosoInsight/wordfreq), via
+    https://github.com/aparrish/wordfreq-en-25000. Licensed CC BY-SA 4.0
+    (https://creativecommons.org/licenses/by-sa/4.0/). Changed: log-frequencies removed, order kept.
+    The file's own header and the credit in the app must stay with it. The ShareAlike condition
+    applies to that list, not to the application code.
+
+See THIRD_PARTY_NOTICES.md for details.
+
+-------------------------------------------------------------------------------
+CC0 1.0 Universal
+-------------------------------------------------------------------------------
+
 Creative Commons Legal Code
 
 CC0 1.0 Universal

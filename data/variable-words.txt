@@ -1,0 +1,97 @@
+# Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE).
+# Supplemental syllable counts for words CMUdict lists with only one count.
+# Format: word count [count ...]   (first count is the primary, used for totals)
+# Counts are merged after CMUdict's own; a word listed here is flagged "variable".
+# Inflected forms are listed explicitly (the app does no suffix guessing).
+
+# --- 50 base words ---
+caramel 3 2
+chocolate 2 3
+vegetable 4 3
+aluminum 4 3
+aluminium 5 4
+comfortable 4 3
+memory 3 2
+business 2 3
+evening 2 3
+basically 4 3
+especially 5 4
+fashion 2 3
+lovely 2 3
+orange 2 1
+poem 2 1
+poet 2 3
+quiet 2 1
+really 2 3
+realize 3 2
+riot 2 1
+diet 2 1
+barbecue 3 2
+jewellery 3 2
+mischievous 3 4
+nuclear 3 2
+flower 2 1
+power 2 1
+tower 2 1
+shower 2 1
+bowel 2 1
+secretary 4 3
+laboratory 4 3
+library 3 2
+february 4 3
+tyrannical 4 3
+choir 1 2
+iron 2 1
+wednesday 3 2
+mayonnaise 3 4
+lion 2 1
+loyal 2 1
+royal 2 1
+duel 2 1
+diamond 3 2
+fiery 3 2
+mayor 2 1
+player 2 1
+layer 2 1
+prior 2 1
+sapphire 3 2
+
+# --- inflected forms ---
+caramels 3 2
+chocolates 2 3
+vegetables 4 3
+aluminums 4 3
+comfortably 4 3
+memories 3 2
+businesses 3 2
+evenings 2 3
+poems 2 1
+poets 2 3
+riots 2 1
+diets 2 1
+barbecues 3 2
+barbecued 3 2
+realized 3 2
+realizes 4 3
+realizing 4 3
+quieter 3 2
+quietly 3 2
+oranges 3 2
+flowers 2 1
+flowery 3 2
+powers 2 1
+powerful 3 2
+powerfully 3 2
+towers 2 1
+showers 2 1
+secretaries 4 3
+libraries 3 2
+irons 2 1
+ironing 2 3
+lions 2 1
+royals 2 1
+loyally 3 2
+mayors 2 1
+players 2 1
+layers 2 1
+diamonds 3 2

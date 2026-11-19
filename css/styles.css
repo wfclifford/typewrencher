@@ -1,0 +1,1091 @@
+/* Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE). */
+:root {
+  --bg: #e6ecea;
+  --sheet: #fbfcfb;
+  --ink: #1d2a2e;
+  --muted: #58696d;
+  --rule: #cdd8d5;
+  --count: #0d6b66;
+  --count-bg: #e0efec;
+  --focus: #0d6b66;
+  --scale: 1;
+  --fs: calc(1.2rem * var(--scale));
+  --lh: calc(2rem * var(--scale));
+  --pad: 1.25rem;
+  --hit: 2.5rem;
+  --drawer-w: 26rem;
+  --serif: Charter, "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101517; --sheet: #182024; --ink: #e3ebe9; --muted: #8fa2a6;
+    --rule: #2b383c; --count: #6fd3c9; --count-bg: #1f3335; --focus: #6fd3c9;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101517; --sheet: #182024; --ink: #e3ebe9; --muted: #8fa2a6;
+  --rule: #2b383c; --count: #6fd3c9; --count-bg: #1f3335; --focus: #6fd3c9;
+}
+:root { --edge: var(--muted); }
+@supports (color: color-mix(in srgb, red, blue)) {
+  :root { --edge: color-mix(in srgb, var(--ink) 55%, var(--bg)); }
+}
+@media (pointer: coarse) { :root { --hit: 2.75rem; } }
+@media (min-width: 800px) { :root { --fs: calc(1.4rem * var(--scale)); --lh: calc(2.3rem * var(--scale)); --pad: 1.75rem; } }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  height: 100%; margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--sans);
+}
+.app {
+  height: 100%; max-width: 62rem; margin: 0 auto;
+  padding: 1rem 1rem 0.75rem; display: flex; flex-direction: column; gap: 0.75rem;
+}
+header { display: flex; align-items: center; justify-content: flex-end; gap: 1rem; flex-wrap: wrap; }
+.title { margin: 0; font-size: 1.15rem; font-weight: 600; }
+.sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.hint { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+.sheet {
+  position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: auto 1fr;
+  background: var(--sheet); border: 1px solid var(--edge); border-radius: 6px; overflow: hidden;
+}
+.sheet:focus-within { outline: 2px solid var(--muted); outline-offset: 2px; }
+
+#gutter {
+  overflow: hidden; width: 3.1rem; border-right: 1px solid var(--rule);
+  padding: 0 0.3rem 0 1.05rem; text-align: right; user-select: none;
+}
+#counts { padding: var(--pad) 0 4rem; }
+#counts div { height: var(--lh); line-height: var(--lh); display: flex; justify-content: flex-end; align-items: flex-start; }
+#counts b {
+  display: inline-block; min-width: 1.5rem; padding: 0 0.2rem; border-radius: 1rem;
+  background: var(--count-bg); color: var(--count);
+  font-size: 0.8rem; font-weight: 600; height: 1.55rem; line-height: 1.55rem; text-align: center;
+  font-variant-numeric: tabular-nums;
+  /* centered on the first text line of its row, whatever the row height */
+  margin-top: calc((var(--lh) - 1.55rem) / 2);
+}
+
+#ed {
+  display: block; width: 100%; height: 100%; margin: 0; border: 0; resize: none;
+  background: transparent; color: var(--ink); outline: none;
+  font: 400 var(--fs)/var(--lh) var(--serif);
+  padding: var(--pad) var(--pad) var(--pad) 1rem;
+  white-space: pre; overflow: auto; tab-size: 4;
+}
+/* Same wrapping rules in the text box and its hidden measuring copy. */
+#ed, #measure, #hl { letter-spacing: normal; word-spacing: normal; word-break: normal; text-transform: none; }
+#ed::placeholder { color: var(--muted); font-style: italic; }
+
+/* --ffs is the one text size for every footer item; --tp is the tap padding of the buttons in it,
+   which the first and last items cancel with a negative margin so their text lines up with the rest. */
+footer { --ffs: 0.9rem; --tp: .25rem; display: flex; gap: 1.25rem; flex-wrap: wrap; color: var(--muted); font-size: var(--ffs); }
+@media (pointer: coarse) { footer { --tp: .5rem; } }
+@media (max-width: 600px) { footer { --ffs: .85rem; } }
+@media (max-width: 360px) { footer { --ffs: .75rem; --tp: .25rem; } }
+footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.note { margin-left: auto; font-size: 0.8rem; }
+.actions { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-left: auto; }
+.clear { display: inline-flex; align-items: center; gap: 0.35rem; }
+.clear svg { width: 1.05rem; height: 1.05rem; display: block; }
+.clear[aria-disabled="true"] { opacity: 0.5; cursor: default; }
+.clear.armed { color: #fff; border-color: #e00000; background: #e00000; font-weight: 600; }
+#save {
+  font: 600 0.9rem/1.2 var(--sans); color: var(--count); background: var(--count-bg);
+  border: 1px solid var(--edge); border-radius: 6px; padding: 0.45rem 0.85rem; cursor: pointer;
+}
+#save { display: inline-flex; align-items: center; gap: 0.3rem; }
+#save svg { width: 1.05rem; height: 1.05rem; display: block; }
+#save:hover:not([aria-disabled="true"]) { border-color: var(--count); }
+#save:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+#save[aria-disabled="true"] { opacity: 0.5; cursor: default; }
+.open { display: inline-flex; align-items: center; justify-content: center; }
+.open svg { width: 1.05rem; height: 1.05rem; display: block; }
+.savebox { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.fname { display: flex; align-items: baseline; gap: 0.25rem; color: var(--muted); font-size: 0.9rem; }
+#fname {
+  width: 9.5rem; font: 400 0.9rem/1.2 var(--serif); color: var(--ink); background: var(--sheet);
+  border: 1px solid var(--edge); border-radius: 6px; padding: 0.45rem 0.6rem;
+}
+#fname::placeholder { color: var(--muted); font-style: italic; }
+#fname:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+:root[data-tone="warm"] {
+  --bg: #efe7dc; --sheet: #fdfaf5; --ink: #2e2520; --muted: #6f6056; --rule: #ddd1c2;
+  --count: #9a4a1e; --count-bg: #f6e4d3; --focus: #9a4a1e;
+}
+:root[data-tone="grey"] {
+  --bg: #e9e9e9; --sheet: #fafafa; --ink: #1c1c1c; --muted: #656565; --rule: #d2d2d2;
+  --count: #333333; --count-bg: #e4e4e4; --focus: #333333;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-tone="warm"]:not([data-theme="light"]) {
+    --bg: #17120f; --sheet: #1f1915; --ink: #efe6dc; --muted: #b3a294; --rule: #3a2f27;
+    --count: #f0a878; --count-bg: #3a2a1f; --focus: #f0a878;
+  }
+  :root[data-tone="grey"]:not([data-theme="light"]) {
+    --bg: #121212; --sheet: #1a1a1a; --ink: #e8e8e8; --muted: #9a9a9a; --rule: #2e2e2e;
+    --count: #d0d0d0; --count-bg: #2a2a2a; --focus: #d0d0d0;
+  }
+}
+:root[data-tone="warm"][data-theme="dark"] {
+  --bg: #17120f; --sheet: #1f1915; --ink: #efe6dc; --muted: #b3a294; --rule: #3a2f27;
+  --count: #f0a878; --count-bg: #3a2a1f; --focus: #f0a878;
+}
+:root[data-tone="grey"][data-theme="dark"] {
+  --bg: #121212; --sheet: #1a1a1a; --ink: #e8e8e8; --muted: #9a9a9a; --rule: #2e2e2e;
+  --count: #d0d0d0; --count-bg: #2a2a2a; --focus: #d0d0d0;
+}
+/* retro_term (terminal): ONE color on ONE background, like B&W: no tints, grays or secondary colors. Light is dark ink on pale
+   paper; dark is phosphor on near-black. Rules, borders, muted text and focus rings are the full-strength ink. */
+:root[data-tone="terminal"] {
+  --bg: #e8f1e2; --sheet: #e8f1e2; --ink: #0a2a10; --muted: #0a2a10; --rule: #0a2a10;
+  --count: #0a2a10; --count-bg: #e8f1e2; --focus: #0a2a10; --edge: #0a2a10;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-tone="terminal"]:not([data-theme="light"]) {
+    --bg: #020502; --sheet: #020502; --ink: #3dff6b; --muted: #3dff6b; --rule: #3dff6b;
+  --count: #3dff6b; --count-bg: #020502; --focus: #3dff6b; --edge: #3dff6b;
+  }
+}
+:root[data-tone="terminal"][data-theme="dark"] {
+  --bg: #020502; --sheet: #020502; --ink: #3dff6b; --muted: #3dff6b; --rule: #3dff6b;
+  --count: #3dff6b; --count-bg: #020502; --focus: #3dff6b; --edge: #3dff6b;
+}
+/* retro_amber (amber): ONE color on ONE background, like B&W: no tints, grays or secondary colors. Light is dark ink on pale
+   paper; dark is phosphor on near-black. Rules, borders, muted text and focus rings are the full-strength ink. */
+:root[data-tone="amber"] {
+  --bg: #f8eed4; --sheet: #f8eed4; --ink: #2b1a00; --muted: #2b1a00; --rule: #2b1a00;
+  --count: #2b1a00; --count-bg: #f8eed4; --focus: #2b1a00; --edge: #2b1a00;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-tone="amber"]:not([data-theme="light"]) {
+    --bg: #080400; --sheet: #080400; --ink: #ffb000; --muted: #ffb000; --rule: #ffb000;
+  --count: #ffb000; --count-bg: #080400; --focus: #ffb000; --edge: #ffb000;
+  }
+}
+:root[data-tone="amber"][data-theme="dark"] {
+  --bg: #080400; --sheet: #080400; --ink: #ffb000; --muted: #ffb000; --rule: #ffb000;
+  --count: #ffb000; --count-bg: #080400; --focus: #ffb000; --edge: #ffb000;
+}
+:root[data-tone="amber"] #ed { caret-color: transparent; /* the block cursor is drawn in #hl (js/mirror.js) */ }
+
+/* High contrast (hc-yellow): ONE ink on ONE background, like B&W, in yellow. Light is black on bright yellow (about 16:1);
+   dark is yellow on black. Rules, borders and focus rings are the full-strength ink; selected states, the skull, the
+   .txt button and the gutter badges are inverted solids (the retro rules below). */
+:root[data-tone="hc-yellow"] {
+  --bg: #ffe600; --sheet: #ffe600; --ink: #000000; --muted: #000000; --rule: #000000;
+  --count: #000000; --count-bg: #ffe600; --focus: #000000; --edge: #000000;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-tone="hc-yellow"]:not([data-theme="light"]) {
+    --bg: #000000; --sheet: #000000; --ink: #ffe600; --muted: #ffe600; --rule: #ffe600;
+    --count: #ffe600; --count-bg: #000000; --focus: #ffe600; --edge: #ffe600;
+  }
+}
+:root[data-tone="hc-yellow"][data-theme="dark"] {
+  --bg: #000000; --sheet: #000000; --ink: #ffe600; --muted: #ffe600; --rule: #ffe600;
+  --count: #ffe600; --count-bg: #000000; --focus: #ffe600; --edge: #ffe600;
+}
+
+/* E-ink: flat paper-grey with soft black ink (about 10:1), no tinted fills (they dither on e-paper), outlined count
+   badges, inverted-block highlight, solid lines, no shadows, and no transitions or animation (they ghost). */
+:root[data-tone="eink"] {
+  --bg: #cfcec4; --sheet: #d9d8ce; --ink: #1d1d1b; --muted: #3f3f3b; --rule: #8f8e85;
+  --count: #1d1d1b; --count-bg: #d9d8ce; --focus: #1d1d1b; --edge: #4a4a45;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-tone="eink"]:not([data-theme="light"]) {
+    --bg: #1f1f1d; --sheet: #262624; --ink: #cfcdc2; --muted: #a3a198; --rule: #55544e;
+    --count: #cfcdc2; --count-bg: #262624; --focus: #cfcdc2; --edge: #8f8d84;
+  }
+}
+:root[data-tone="eink"][data-theme="dark"] {
+  --bg: #1f1f1d; --sheet: #262624; --ink: #cfcdc2; --muted: #a3a198; --rule: #55544e;
+  --count: #cfcdc2; --count-bg: #262624; --focus: #cfcdc2; --edge: #8f8d84;
+}
+:root[data-tone="eink"] *, :root[data-tone="eink"] *::before, :root[data-tone="eink"] *::after { transition: none !important; animation: none !important; box-shadow: none !important; }
+
+/* B&W (hc-bw): pure black and white only, no grays. Light is black on white; dark is white on
+   black. Borders and rules are full-strength ink. Selected states, the skull, the download button
+   and the gutter badges are inverted solids (see the overrides further down). */
+:root[data-tone="hc-bw"] {
+  --bg: #ffffff; --sheet: #ffffff; --ink: #000000; --muted: #000000; --rule: #000000;
+  --count: #000000; --count-bg: #ffffff; --focus: #000000; --edge: #000000;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-tone="hc-bw"]:not([data-theme="light"]) {
+    --bg: #000000; --sheet: #000000; --ink: #ffffff; --muted: #ffffff; --rule: #ffffff;
+    --count: #ffffff; --count-bg: #000000; --focus: #ffffff; --edge: #ffffff;
+  }
+}
+:root[data-tone="hc-bw"][data-theme="dark"] {
+  --bg: #000000; --sheet: #000000; --ink: #ffffff; --muted: #ffffff; --rule: #ffffff;
+  --count: #ffffff; --count-bg: #000000; --focus: #ffffff; --edge: #ffffff;
+}
+:root[data-tone="terminal"] #ed { caret-color: transparent; /* the block cursor is drawn in #hl (js/mirror.js) */ }
+.tone { display: inline-flex; align-items: center; gap: 0.35rem; }
+.dot {
+  width: 0.7rem; height: 0.7rem; flex: none; border-radius: 50%; display: inline-block;
+  background: var(--dot); border: 1px solid rgba(128, 128, 128, 0.45);
+}
+.ico { display: inline-flex; align-items: center; }
+.aa { font-size: 0.95rem; line-height: 1; }
+.aa-s { font-size: 0.75rem; }
+.aa-l { font-size: 1.15rem; }
+.seg button:disabled { opacity: 0.4; cursor: default; }
+
+.f-serif { font-family: var(--serif); }
+.f-sans { font-family: var(--sans); }
+.f-mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace; }
+.seg svg, .tog svg {
+  width: 1.05rem; height: 1.05rem; display: block; fill: none; stroke: currentColor;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+:root { color-scheme: light dark; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+:root { --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+:root[data-font="sans"] #ed, :root[data-font="sans"] #measure, :root[data-font="sans"] #hl { font-family: var(--sans); }
+:root { --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+:root[data-font="mono"] #ed, :root[data-font="mono"] #measure, :root[data-font="mono"] #hl {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: calc(var(--fs) * 0.9);
+}
+.prefs { display: flex; align-items: stretch; gap: 0.75rem; flex-wrap: wrap; flex-basis: 100%; }
+.tog, .seg button { white-space: nowrap; }
+.seg { display: inline-flex; border: 1px solid var(--edge); border-radius: 6px; overflow: hidden; }
+.seg button, .tog {
+  font: 600 0.8rem/1.2 var(--sans); color: var(--muted); background: transparent;
+  border: 0; padding: 0.4rem 0.65rem; cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--edge); }
+.tog { border: 1px solid var(--edge); border-radius: 6px; }
+.seg button[aria-pressed="true"], .tog[aria-pressed="true"], .tone-grid button[aria-pressed="true"] { background: var(--count-bg); color: var(--count); box-shadow: inset 0 -3px 0 var(--count); }
+.seg button:focus-visible, .tog:focus-visible, .tone-grid button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.stats { display: flex; align-items: center; gap: 0 1.25rem; flex-wrap: wrap; flex: 1 1 100%; min-width: 0; }
+.more {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  font: 600 0.85rem/1.2 var(--sans); color: var(--muted); background: transparent;
+  border: 1px solid var(--edge); border-radius: 6px; padding: 0.35rem 0.65rem; cursor: pointer;
+}
+.more { position: relative; }
+.more svg { width: 1.15rem; height: 1.15rem; display: block; fill: currentColor; }
+.more:hover { color: var(--ink); }
+.more:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+#measure {
+  position: absolute; left: 0; top: 0; visibility: hidden; pointer-events: none;
+  padding: 0 var(--pad) 0 1rem; box-sizing: border-box;
+  font: 400 var(--fs)/var(--lh) var(--serif); white-space: pre-wrap; overflow-wrap: break-word; tab-size: 4;
+}
+#measure div { min-height: var(--lh); }
+#ed.wrap { white-space: pre-wrap; overflow-wrap: break-word; }
+
+/* Rhymed-word highlight: a mirror of the text, drawn over the editor in the same grid cell. It has the editor's
+   font, padding and wrapping, but only the <mark> shows. It never takes taps, so the caret and selection are
+   untouched. Light/Dark tones get a soft tint with a thin outline; the monochrome tones get an inverted block. */
+#ed, #hl { grid-area: 1 / 2; }
+#gutter { grid-area: 1 / 1; }
+#hl {
+  display: block; width: 100%; height: 100%; margin: 0; border: 0; box-sizing: border-box; pointer-events: none;
+  color: transparent; background: transparent; overflow: auto; scrollbar-color: transparent transparent; user-select: none;
+  font: 400 var(--fs)/var(--lh) var(--serif); padding: var(--pad) var(--pad) var(--pad) 1rem;
+  white-space: pre; tab-size: 4; text-transform: none;
+}
+#hl::-webkit-scrollbar { background: transparent; }
+#hl::-webkit-scrollbar-thumb { background: transparent; }
+#ed.wrap ~ #hl { white-space: pre-wrap; overflow-wrap: break-word; }
+#hl mark {
+  color: transparent; background: transparent; border-radius: 4px; padding: 0 2px; margin: 0 -2px;
+  box-shadow: inset 0 -2px 0 var(--count);
+}
+@supports (background: color-mix(in srgb, red 10%, transparent)) {
+  #hl mark { background: color-mix(in srgb, var(--count) 18%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--count) 45%, transparent); }
+}
+:root:is([data-tone="hc-bw"], [data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) #hl mark {
+  background: var(--ink); color: var(--bg); border-radius: 0; padding: 0; margin: 0; box-shadow: none;
+}
+.tog, .seg { min-height: 2rem; }
+.tog, .seg button { min-width: 1.75rem; }
+.ico { justify-content: center; }
+.fname-text { white-space: nowrap; flex: none; }
+.tog, .seg button { padding-top: 0; padding-bottom: 0; }
+.tog { display: inline-flex; align-items: center; justify-content: center; }
+[hidden] { display: none !important; }
+.info {
+  display: inline-flex; align-items: center; justify-content: center; min-width: var(--hit); min-height: var(--hit);
+  padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer;
+}
+.info svg {
+  width: 1.15rem; height: 1.15rem; display: block; fill: none; stroke: currentColor;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.info:hover { color: var(--ink); }
+.info:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; }
+dialog {
+  padding: 0; border: 1px solid var(--edge); border-radius: 8px; background: var(--sheet); color: var(--ink);
+  width: min(28rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow: auto;
+}
+dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+@media (max-width: 600px) {
+  header { gap: 0.5rem; }
+  .more, #save { white-space: nowrap; padding: 0.4rem 0.55rem; font-size: 0.8rem; }
+  .actions { flex: 1 1 0; min-width: 0; flex-wrap: nowrap; gap: 0.5rem; }
+  .savebox { flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; gap: 0.4rem; }
+  .fname { flex: 1 1 auto; min-width: 0; }
+  #fname { flex: 1 1 auto; width: 100%; min-width: 0; }
+  .prefs { gap: 0.4rem; }
+  .tog, .seg button { padding: 0 0.3rem; font-size: 0.72rem; }
+  .seg .tone { padding: 0 0.45rem; }
+  .seg .ico { padding: 0 0.4rem; }
+  #wrapToggle { padding: 0 0.5rem; }
+  .tog-text { padding: 0 0.5rem; }
+  .tone-label { display: none; }
+  /* The confirm label is long: give it its own row rather than squeeze the filename. */
+  header .clear.armed { flex: 1 0 100%; justify-content: center; }
+}
+
+:root {
+  --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.advanced-section {
+  margin: 0;
+}
+
+.advanced-section h3 {
+  margin: 0 0 .5rem;
+  font-size: .95rem;
+}
+
+#dictionaryStatus {
+  color: var(--count);
+}
+
+.coverage {
+  font-size: inherit;
+}
+
+/* Status badge on the gear: a "!" glyph, so it does not rely on color alone. */
+.badge {
+  position: absolute; top: -.45rem; right: -.45rem;
+  min-width: 1.1rem; height: 1.1rem; padding: 0 .15rem; border-radius: 999px;
+  background: var(--ink); color: var(--bg); border: 2px solid var(--bg); box-sizing: content-box;
+  font: 700 .7rem/1.1rem var(--sans); text-align: center;
+}
+
+/* Footer dictionary status. One chip, four states (data-state), each with its own glyph and
+   wording so it never relies on color alone. It opens Dictionary Options. */
+.dict-chip {
+  display: inline-flex; align-items: center; gap: .4rem; max-width: 100%;
+  font: 600 1em var(--sans); line-height: inherit; /* same line box as its neighbours, so text centres match */
+  color: var(--muted); text-align: left;
+  background: transparent; border: 1px solid transparent; border-radius: 6px;
+  padding: .2rem var(--tp); min-height: 1.75rem; cursor: pointer; margin-left: auto; margin-right: calc(-1 * var(--tp) - 1px);
+  overflow-wrap: anywhere;
+}
+.dict-chip svg { flex: none; width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: none; }
+.dict-chip[data-state="loading"] [data-icon="loading"],
+.dict-chip[data-state="ready"] [data-icon="ready"],
+.dict-chip[data-state="warn"] [data-icon="warn"],
+.dict-chip[data-state="failed"] [data-icon="warn"],
+.dict-chip[data-state="off"] [data-icon="off"] { display: block; }
+/* Trouble is the only state that gets weight, color-independent: ink text and a border. */
+.dict-chip[data-state="failed"], .dict-chip[data-state="warn"] { color: var(--ink); border-color: var(--edge); }
+.dict-chip:hover { color: var(--ink); border-color: var(--edge); }
+.dict-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.dict-chip[data-state="loading"] [data-icon="loading"] { animation: chip-spin 1s linear infinite; }
+@keyframes chip-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .dict-chip[data-state="loading"] [data-icon="loading"] { animation: none; } }
+@media (forced-colors: active) { .dict-chip { border-color: ButtonText; } }
+
+/* Larger touch targets for the header controls on touch screens. */
+@media (pointer: coarse) {
+  header .tog, header .more, #save, #fname { min-height: var(--hit); }
+  header .tog, header .more { min-width: var(--hit); justify-content: center; }
+  .dict-chip { min-height: var(--hit); }
+}
+
+/* Mobile scroll fix: the settings drawer is a right-hand <dialog> (modal on narrow
+   screens, docked and non-modal on wide ones) and is the single, height-constrained
+   scrolling container. 100vh is the fallback for 100dvh; nothing inside it creates a
+   nested scroll region. */
+#morePanel {
+  --head-h: calc(3.5rem + env(safe-area-inset-top, 0px));
+  --gx: 1.25rem;
+  --gx-r: calc(1.25rem + env(safe-area-inset-right, 0px));
+  position: fixed;
+  inset: 0 0 0 auto;
+  margin: 0;
+  width: min(var(--drawer-w), calc(100vw - 2.5rem));
+  max-width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  border: 0;
+  border-left: 1px solid var(--edge);
+  border-radius: 0;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, .18);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  touch-action: pan-y pinch-zoom;
+  /* Keep a focused control from sliding under the sticky header (WCAG 2.4.11). */
+  scroll-padding-top: calc(var(--head-h) + .75rem);
+  scroll-padding-bottom: 1rem;
+}
+
+#morePanel::backdrop {
+  background: rgba(0, 0, 0, .2);
+}
+
+/* Wide screens: docked beside the editor, which makes room for it and stays usable. */
+@media (min-width: 900px) {
+  #morePanel { box-shadow: none; }
+  html[data-drawer="docked"] body { padding-right: var(--drawer-w); }
+}
+
+/* Slide in from the right (entry only; closing is instant). */
+@media (prefers-reduced-motion: no-preference) {
+  #morePanel {
+    transform: translateX(100%);
+    transition: transform .22s ease;
+  }
+  #morePanel[open] {
+    transform: none;
+  }
+  @starting-style {
+    #morePanel[open] {
+      transform: translateX(100%);
+    }
+  }
+}
+
+/* Fills the whole drawer, so a click on the dialog element itself can only be a
+   click on the modal backdrop. Options sit at the top; the accordions sit at the bottom. */
+.drawer-inner {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+.drawer-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  min-height: var(--head-h);
+  padding: env(safe-area-inset-top, 0px) var(--gx-r) 0 var(--gx);
+  background: var(--sheet);
+  border-bottom: 1px solid var(--rule);
+}
+
+.drawer-head .title {
+  color: var(--ink);
+}
+
+.drawer-head .title:focus {
+  outline: none; /* heading is only focused programmatically, to announce the panel */
+}
+
+.drawer-options {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem var(--gx-r) 1.25rem var(--gx);
+}
+
+/* One labeled setting: label on the left, control on the right (stacked on phones). */
+.opt {
+  display: grid;
+  gap: .4rem;
+  align-items: start;
+}
+
+.opt-label {
+  color: var(--muted);
+  font-size: .85rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.opt > :not(.opt-label) {
+  justify-self: start;
+  max-width: 100%;
+}
+
+@media (min-width: 480px) {
+  .opt:not(.opt-solo) {
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    column-gap: .75rem;
+  }
+  .opt-label {
+    padding-top: calc((var(--hit) - 1.02rem) / 2);
+  }
+}
+
+.opt-stack {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+
+.opt-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: .8rem;
+  line-height: 1.45;
+}
+
+.opt-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .75rem;
+  padding-top: .25rem;
+}
+
+/* Drawer controls: sized to the --hit target, full text, strong text color. */
+#morePanel .seg button,
+#morePanel .tog,
+#morePanel .tone-grid button,
+#morePanel .stepper button {
+  min-height: var(--hit);
+  padding: 0 .8rem;
+  gap: .45rem;
+  font-size: .9rem;
+  color: var(--ink);
+}
+
+#morePanel .seg {
+  min-height: var(--hit);
+}
+
+#morePanel .seg button,
+#morePanel .stepper button {
+  min-width: var(--hit);
+}
+
+#morePanel .tone-label {
+  display: inline;
+}
+
+#morePanel .aa      { font-size: .95rem; }
+#morePanel .aa-s    { font-size: .8rem; }
+#morePanel .aa-l    { font-size: 1.2rem; }
+
+.tone-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .5rem;
+  width: 100%;
+}
+
+.tone-grid button {
+  padding: 0 .65rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: transparent;
+  font: 600 .9rem/1.2 var(--sans);
+  cursor: pointer;
+  text-align: left;
+  overflow-wrap: anywhere; /* wraps instead of overflowing at 320px or with extra text spacing */
+}
+
+#morePanel .tone-grid button {
+  padding: 0 .6rem;
+  gap: .4rem;
+}
+
+/* Text size: stepper with a visible "n of 7" level. */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.stepper button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: transparent;
+  font: 600 1rem/1 var(--sans);
+  cursor: pointer;
+}
+
+.stepper button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.stepper button:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.stepper-mid {
+  min-width: 4.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .35rem;
+}
+
+.stepper-mid output {
+  color: var(--ink);
+  font-size: .9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.level {
+  display: inline-flex;
+  gap: .25rem;
+}
+
+.level i {
+  width: .55rem;
+  height: .55rem;
+  border: 2px solid var(--edge);
+  border-radius: 50%;
+}
+
+.level[data-level="1"] i:nth-child(-n+1),
+.level[data-level="2"] i:nth-child(-n+2),
+.level[data-level="3"] i:nth-child(-n+3),
+.level[data-level="4"] i:nth-child(-n+4),
+.level[data-level="5"] i:nth-child(-n+5),
+.level[data-level="6"] i:nth-child(-n+6),
+.level[data-level="7"] i:nth-child(-n+7) {
+  background: var(--count);
+  border-color: var(--count);
+}
+
+/* Real switches (native checkboxes with role="switch"). State is shown by the thumb
+   position as well as by color, and the whole row is the click target. */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: .7rem;
+  min-height: var(--hit);
+  color: var(--ink);
+  font-size: .9rem;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.switch input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  position: relative;
+  width: 2.75rem;
+  height: 1.5rem;
+  margin: 0;
+  border: 2px solid var(--edge);
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.switch input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: .2rem;
+  width: .9rem;
+  height: .9rem;
+  border-radius: 50%;
+  background: var(--edge);
+  transform: translateY(-50%);
+}
+
+.switch input[type="checkbox"]:checked {
+  background: var(--count);
+  border-color: var(--count);
+}
+
+.switch input[type="checkbox"]:checked::before {
+  left: calc(100% - 1.1rem);
+  background: var(--sheet);
+}
+
+.switch input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .switch input[type="checkbox"]::before { transition: left .15s ease; }
+}
+
+/* Accordions (About, Advanced). */
+.acc {
+  flex: none;
+  border-top: 1px solid var(--rule);
+  padding: 0 var(--gx-r) 0 var(--gx);
+  font-size: .82rem;
+  line-height: 1.5;
+}
+
+.reset-block {
+  border-top: 1px solid var(--rule);
+  padding-top: 1rem;
+  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Display and Export accordions hold the labeled settings. */
+.acc-opts {
+  display: flex; flex-direction: column; gap: 1rem;
+  padding: .25rem 0 1rem;
+  font-size: 1rem; line-height: normal;
+}
+
+.acc > summary {
+  padding: .75rem 0;
+  min-height: var(--hit);
+  color: var(--ink);
+  font-size: .95rem;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.acc > summary::marker {
+  color: var(--count);
+}
+
+.acc > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.acc-body {
+  padding: 0 0 .75rem;
+  overflow-wrap: anywhere;
+}
+
+.acc-body p {
+  margin: .5rem 0;
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+.advanced-body .dictionary-details {
+  font-size: .8rem;
+  color: var(--muted);
+}
+
+.dictionary-toggle {
+  margin-bottom: .25rem;
+}
+
+.cmudict-license {
+  margin-top: .85rem;
+  padding-top: .5rem;
+  border-top: 1px solid var(--rule);
+}
+
+.cmudict-license > summary {
+  padding: .5rem 0;
+  min-height: var(--hit);
+  color: var(--count);
+  font-size: .85rem;
+  cursor: pointer;
+}
+
+.cmudict-license > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Keep the expanded license within the drawer width. */
+#advancedLicense {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: .75rem;
+  line-height: 1.5;
+}
+
+/* Windows high-contrast / forced colors: the shaded "pressed" fill and the switch
+   colors are removed by the browser, so mark them with system colors. */
+@media (forced-colors: active) {
+  .seg button[aria-pressed="true"],
+  .tog[aria-pressed="true"],
+  .tone-grid button[aria-pressed="true"] {
+    background: Highlight;
+    color: HighlightText;
+    forced-color-adjust: none;
+  }
+  .switch input[type="checkbox"]:checked { background: Highlight; border-color: Highlight; }
+  .switch input[type="checkbox"]:checked::before { background: HighlightText; }
+  .level i { background: Canvas; }
+  .level[data-level="1"] i:nth-child(-n+1),
+  .level[data-level="2"] i:nth-child(-n+2),
+  .level[data-level="3"] i:nth-child(-n+3),
+  .level[data-level="4"] i:nth-child(-n+4),
+  .level[data-level="5"] i:nth-child(-n+5),
+  .level[data-level="6"] i:nth-child(-n+6),
+  .level[data-level="7"] i:nth-child(-n+7) { background: Highlight; border-color: Highlight; }
+}
+
+@media (max-width: 360px) {
+  #morePanel .tone-grid button { padding: 0 .45rem; gap: .3rem; font-size: .8rem; }
+  #morePanel .seg button, #morePanel .tog, #morePanel .stepper button { padding: 0 .55rem; gap: .35rem; }
+  .stepper { gap: .25rem; }
+}
+
+/* Footer counts that open the word lists. Underlined so they read as tappable. */
+.cov-btn {
+  display: inline-flex; align-items: center; gap: .3em; min-height: 1.75rem; padding: 0 var(--tp); margin: 0;
+  font: inherit; color: inherit; background: transparent; border: 0; border-radius: 4px;
+  text-decoration: underline; text-underline-offset: .2em; cursor: pointer;
+}
+.cov-btn:hover { color: var(--ink); }
+.cov-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (pointer: coarse) { .cov-btn { min-height: var(--hit); } }
+#estBtn { margin-left: calc(-1 * var(--tp)); }
+
+/* Word list dialog (estimated / variable). The dialog itself scrolls; the title row sticks. */
+.words-dlg {
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overscroll-behavior: contain;
+}
+.words-head {
+  position: sticky; top: 0; z-index: 1;
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  min-height: 3.5rem; padding: 0 .5rem 0 1.25rem;
+  background: var(--sheet); border-bottom: 1px solid var(--rule);
+}
+.words-body { padding: 1rem 1.25rem 1.25rem; }
+.words-summary { margin: .75rem 0 .25rem; font-size: .9rem; font-weight: 600; }
+.words-list { list-style: none; margin: 0; padding: 0; }
+.words-list li {
+  display: flex; flex-direction: column; gap: .15rem;
+  padding: .6rem 0; border-top: 1px solid var(--rule);
+}
+.w-word { font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
+.w-note { color: var(--muted); font-size: .85rem; line-height: 1.4; }
+
+/* The Erase skull is a solid glyph (the shared icon rule draws outlines). */
+.tog.clear svg { fill: currentColor; stroke: none; }
+
+/* Center the skull: the (usually empty) confirm label would otherwise add a flex gap. */
+#clearLabel:empty { display: none; }
+
+/* Gutter markers: ~ = estimated word(s) on the line, ± = word(s) with alternate counts.
+   Glyphs, not just color; the count's screen-reader text spells them out. They stack in a
+   small column beside the count, centered on it. */
+#counts b { position: relative; }
+.flags {
+  position: absolute; right: 100%; top: 50%; transform: translateY(-50%); margin-right: .15rem;
+  display: flex; flex-direction: column; gap: .05rem;
+}
+.flag {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: .8rem; height: .8rem; border-radius: 50%;
+  background: var(--ink); color: var(--bg); border: 1px solid var(--ink);
+  font: 700 .65rem/1 var(--sans); font-style: normal;
+}
+@media (forced-colors: active) { .flag { border-color: CanvasText; } }
+.acc-body p .flag { vertical-align: -.1em; margin: 0 .1em; }
+
+/* Welcome dialog (shown while the dictionary loads): centered, with a spinning sledge hammer icon. */
+.welcome-dlg {
+  width: min(24rem, calc(100vw - 2rem));
+  text-align: center;
+}
+.welcome-body {
+  padding: 1.5rem 1.5rem 1.25rem;
+  display: flex; flex-direction: column; align-items: center; gap: .75rem;
+}
+.welcome-body .title { font-size: 1.3rem; line-height: 1.25; }
+.welcome-body p { margin: 0; font-size: .95rem; line-height: 1.5; }
+.welcome-body .opt-hint { min-height: 1.2em; }
+.welcome-body .tog { min-height: var(--hit); padding: 0 1.25rem; margin-top: .25rem; color: var(--ink); font-size: .9rem; }
+
+.hammer-scene { width: 4.5rem; height: 4.5rem; margin: .5rem 0 1rem; }
+.hammer { display: block; width: 100%; height: 100%; animation: hammer-spin 2s linear infinite; }
+@keyframes hammer-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+/* Reduced motion: a still hammer. The dialog can also be closed at any time. */
+@media (prefers-reduced-motion: reduce) {
+  .hammer { animation: none; }
+}
+
+.welcome-bar { width: 100%; height: .5rem; accent-color: var(--count); }
+/* An indeterminate bar animates endlessly; with reduced motion the text alone reports progress. */
+@media (prefers-reduced-motion: reduce) { .welcome-bar:indeterminate { display: none; } }
+
+/* Dictionary row: estimated, variable and the status chip. On desktop the wrapper is transparent
+   (they flow with the other stats); on a phone it is one line, with the chip's short label. */
+.dict-row { display: contents; }
+.chip-short { display: none; }
+@media (max-width: 600px) {
+  /* One line whenever it fits; only a very large count wraps the chip below instead of overflowing. */
+  .dict-row { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 .35rem; min-width: 0; }
+  .dict-row .coverage { display: flex; align-items: center; flex: none; white-space: nowrap; }
+  .chip-long { display: none; }
+  .chip-short { display: inline; }
+  .dict-chip { flex: 0 1 auto; min-width: 0; white-space: nowrap; }
+}
+@media (max-width: 360px) {
+  .dict-row .cov-btn { gap: .2em; }
+  .dict-chip { gap: .3rem; }
+}
+
+/* B&W overrides. Inverted solids use --ink as the fill and --bg as the glyph/text color, which is
+   black with white icons in light and white with black icons in dark. Anything that would render as
+   a gray (muted text, opacity, translucent scrims and shadows, UA progress track) is replaced by a
+   pattern or a border, so the mode really contains only black and white. */
+:root[data-tone="hc-bw"] :is(#clearBtn, #save, #counts b, .seg button[aria-pressed="true"], .tog[aria-pressed="true"], .tone-grid button[aria-pressed="true"]) {
+  background: var(--ink); color: var(--bg); border-color: var(--ink); box-shadow: none;
+}
+:root[data-tone="hc-bw"] :is(#clearBtn, #save, .seg button[aria-pressed="true"], .tog[aria-pressed="true"], .tone-grid button[aria-pressed="true"]):focus-visible {
+  outline: 2px solid var(--bg); outline-offset: -4px;
+}
+:root[data-tone="hc-bw"] #save:hover:not([aria-disabled="true"]) { border-color: var(--ink); }
+/* Disabled is a dashed inner ring, not a faded gray. */
+:root[data-tone="hc-bw"] :is(.clear, #save)[aria-disabled="true"] { opacity: 1; outline: 2px dashed var(--bg); outline-offset: -4px; }
+:root:is([data-tone="hc-bw"], [data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) :is(.seg button, .stepper button):disabled { opacity: 1; border-style: dashed; }
+:root[data-tone="hc-bw"] #clearBtn.armed { background: var(--bg); color: var(--ink); border: 3px double var(--ink); }
+:root:is([data-tone="hc-bw"], [data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) dialog { border: 2px solid var(--ink); }
+:root:is([data-tone="hc-bw"], [data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) #morePanel { border: 0; border-left: 2px solid var(--ink); box-shadow: none; }
+:root:is([data-tone="hc-bw"], [data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) :is(dialog::backdrop, #morePanel::backdrop) { background: transparent; }
+:root:is([data-tone="hc-bw"], [data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) .dot { border-color: var(--ink); }
+/* Swatches of the other tones would be colors (one is literally gray): hollow rings here; the names identify them. */
+:root[data-tone="hc-bw"] .tone-grid button:not([data-tone-choice="hc-bw"]) .dot { background: transparent; border: 2px solid var(--ink); }
+:root[data-tone="hc-bw"] .tone-grid button[aria-pressed="true"] .dot { border-color: var(--bg); }
+:root:is([data-tone="hc-bw"], [data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) ::selection { background: var(--ink); color: var(--bg); }
+:root:is([data-tone="hc-bw"], [data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) .welcome-bar { appearance: none; -webkit-appearance: none; border: 2px solid var(--ink); background: var(--bg); accent-color: var(--ink); height: .75rem; }
+:root:is([data-tone="hc-bw"], [data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) .welcome-bar::-webkit-progress-bar { background: var(--bg); }
+:root:is([data-tone="hc-bw"], [data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) .welcome-bar::-webkit-progress-value, :root:is([data-tone="hc-bw"], [data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) .welcome-bar::-moz-progress-bar { background: var(--ink); }
+
+/* retro_term and retro_amber: the same high-contrast logic as B&W, in their own colors. The skull,
+   the .txt button, selected states and the gutter badges are inverted solids (--ink fill, --bg
+   glyph/text). Disabled skull and .txt are a SOLID inner ring (B&W uses a dashed one). */
+:root:is([data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) :is(#clearBtn, #save, #counts b, .seg button[aria-pressed="true"], .tog[aria-pressed="true"], .tone-grid button[aria-pressed="true"]) {
+  background: var(--ink); color: var(--bg); border-color: var(--ink); box-shadow: none;
+}
+:root:is([data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) :is(#clearBtn, #save, .seg button[aria-pressed="true"], .tog[aria-pressed="true"], .tone-grid button[aria-pressed="true"]):focus-visible {
+  outline: 2px solid var(--bg); outline-offset: -4px;
+}
+:root:is([data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) #save:hover:not([aria-disabled="true"]) { border-color: var(--ink); }
+:root:is([data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) :is(.clear, #save)[aria-disabled="true"] { opacity: 1; outline: 2px solid var(--bg); outline-offset: -4px; }
+:root:is([data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) #clearBtn.armed { background: var(--bg); color: var(--ink); border: 3px double var(--ink); }
+/* Monochrome: every swatch except the active tone's own is a hollow ring (the names identify them), so
+   retro_term never shows amber and retro_amber never shows green. */
+:root[data-tone="terminal"] .tone-grid button:not([data-tone-choice="terminal"]) .dot,
+:root[data-tone="amber"] .tone-grid button:not([data-tone-choice="amber"]) .dot,
+:root[data-tone="hc-yellow"] .tone-grid button:not([data-tone-choice="hc-yellow"]) .dot,
+:root[data-tone="eink"] .tone-grid button:not([data-tone-choice="eink"]) .dot { background: transparent; border: 2px solid var(--ink); }
+:root:is([data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) .tone-grid button[aria-pressed="true"] .dot { border-color: var(--bg); }
+
+/* ---- Rhymes dock: under the editor, collapsed by default. Uses the app's own variables, so every
+   tone and Light/Dark/System setting applies. The panel scrolls inside a capped height, so it can
+   never push the text off screen. */
+.rhyme-dock[hidden] { display: none; }
+.rhyme-dock { display: flex; flex-direction: column; gap: .4rem; min-height: 0; }
+.rhyme-toggle {
+  display: inline-flex; align-items: center; gap: .4rem; align-self: flex-start;
+  font: 600 .85rem/1.2 var(--sans); color: var(--muted); background: transparent;
+  border: 1px solid var(--edge); border-radius: 6px; padding: .4rem .65rem; min-height: 2rem; cursor: pointer;
+}
+@media (pointer: coarse) { .rhyme-toggle { min-height: var(--hit); } }
+.rhyme-toggle svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; transform: rotate(-90deg); }
+.rhyme-toggle[aria-expanded="true"] svg { transform: none; }
+@media (prefers-reduced-motion: reduce) { .rhyme-toggle svg { transition: none; } }
+.rhyme-toggle[aria-expanded="true"] { background: var(--count-bg); color: var(--count); box-shadow: inset 0 -3px 0 var(--count); }
+.rhyme-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* One card: a flat header row (chevron + "Rhymes · word · count") over the list. The whole row collapses it. The keyboard layout
+   (html.kb, below) keeps its single row of chips instead. */
+html:not(.kb) .rhyme-dock { gap: 0; border: 1px solid var(--edge); border-radius: 8px; background: var(--sheet); overflow: hidden; }
+html:not(.kb) .rhyme-toggle { align-self: stretch; width: 100%; justify-content: flex-start; border: 0; border-radius: 0; color: var(--ink); background: transparent; box-shadow: none; padding: .35rem .6rem; }
+html:not(.kb) .rhyme-toggle:focus-visible { outline-offset: -3px; }
+html:not(.kb) .rhyme-panel { border: 0; border-top: 1px solid var(--rule); border-radius: 0; }
+.rhyme-panel {
+  max-height: 9rem; overflow: auto; overscroll-behavior: contain;
+  background: var(--sheet); color: var(--ink); border: 1px solid var(--edge); border-radius: 6px;
+  padding: .6rem .75rem; font-size: .9rem;
+}
+.rhyme-panel[hidden] { display: none; }
+.rhyme-strict { margin-top: .5rem; }
+.rhyme-group { margin-top: .5rem; }
+.rhyme-group:first-child { margin-top: 0; }
+.rhyme-toggle span { max-width: min(80vw, 28rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rhyme-group-label { color: var(--muted); font-size: .8rem; margin-bottom: .3rem; }
+.rhyme-words { display: flex; flex-wrap: wrap; gap: .35rem; }
+.rhyme-pill {
+  font: inherit; font-size: .9rem; line-height: 1.2; min-height: 1.75rem; padding: .25rem .6rem; cursor: pointer;
+  color: var(--ink); background: transparent; border: 1px solid var(--edge); border-radius: 6px;
+}
+@media (pointer: coarse) { .rhyme-pill { min-height: 2.25rem; } }
+.rhyme-pill:hover { background: var(--ink); color: var(--bg); }
+.rhyme-pill:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.rhyme-more { color: var(--muted); border-style: dashed; }
+:root[data-tone="hc-bw"] .rhyme-more { color: var(--ink); }
+.rhyme-empty { margin: 0 0 .4rem; color: var(--muted); }
+:root[data-tone="hc-bw"] .rhyme-empty, :root[data-tone="hc-bw"] .rhyme-phones, :root[data-tone="hc-bw"] .rhyme-group-label, :root[data-tone="hc-bw"] .rhyme-hint { color: var(--ink); }
+.rhyme-hint { margin-top: .6rem; color: var(--muted); font-size: .8rem; }
+
+/* Small sledge hammer after the app name in the About heading. */
+.wh-icon { width: 1.1em; height: 1.1em; vertical-align: -.15em; margin-left: .15em; }
+
+/* ---- On-screen keyboard (html.kb, set by app.js): the app is pinned to the visible area, the editor keeps at
+   least three lines, and the Rhymes panel is one row of chips just above the keyboard. */
+html.kb .app { position: fixed; left: 0; right: 0; top: var(--vvt, 0px); width: 100%; height: var(--vvh, 100%); padding-bottom: 0.4rem; }
+html.kb .sheet { min-height: calc(var(--lh) * 3 + var(--pad) * 2); }
+html.kb .dict-row { display: none; }
+html.kb .rhyme-dock { flex-direction: row; align-items: center; gap: .5rem; min-width: 0; }
+html.kb .rhyme-toggle { flex: none; max-width: 58%; overflow: hidden; padding-inline: .5rem; gap: .25rem; }
+html.kb .rhyme-toggle svg { width: .9rem; height: .9rem; }
+html.kb .rhyme-panel:not([hidden]) {
+  flex: 1; min-width: 0; max-height: none; border: 0; padding: 0; background: transparent;
+  display: flex; flex-wrap: nowrap; align-items: center; gap: .35rem; overflow-x: auto; overflow-y: hidden;
+  white-space: nowrap; scrollbar-width: none;
+}
+html.kb .rhyme-panel::-webkit-scrollbar { display: none; }
+html.kb .rhyme-panel > * { flex: none; }
+html.kb .rhyme-group { margin: 0; display: flex; align-items: center; gap: .35rem; }
+html.kb .rhyme-words { flex-wrap: nowrap; }
+html.kb .rhyme-empty { margin: 0; }
+html.kb .rhyme-group-label, html.kb .rhyme-hint, html.kb .rhyme-more { display: none; }
+
+/* e-ink badges are outlined, not filled (placed last so it wins over the inverted-solid rule above). */
+:root[data-tone="eink"] #counts b { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+
+/* Block cursor (retro_term and retro_amber only; js/mirror.js draws .bc in #hl): an inverted cell on the character under the
+   caret, or a block at the end of a line. It blinks; the layer is rebuilt on every change, so it stays solid while you type. */
+@keyframes bc-blink { 0%, 49.99% { opacity: 1; } 50%, 100% { opacity: 0; } }
+#hl .bc { background: var(--ink); color: var(--bg); animation: bc-blink 1.1s steps(1, end) infinite; }
+#hl .bc.eol { position: relative; background: transparent; }
+#hl .bc.eol::after { content: ""; position: absolute; left: 0; top: 0; width: 0.6em; height: 1.2em; background: var(--ink); }
+#hl mark .bc { background: var(--bg); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { #hl .bc { animation: none; } }

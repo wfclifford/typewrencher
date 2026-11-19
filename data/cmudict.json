@@ -1,0 +1,7 @@
+{
+  "revision": "custom",
+  "source": "http://127.0.0.1:8022/cmudict.dict",
+  "fetchedAt": "2026-11-18T21:19:02.236Z",
+  "sourceSHA256": "d7bd0837dd3520af88d9638583fcf9fa54904150d061631328cf928c060e64fc",
+  "upstreamSHA256": "81917843c7f44ce2b094ac63873c2c7a4cf802040792c455ba3ca406891c3d22"
+}
