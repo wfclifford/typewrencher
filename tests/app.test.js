@@ -896,7 +896,7 @@ test('local hosting files are in place and documented', () => {
 // ---- welcome dialog
 const deferred = () => { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return {promise, resolve, reject}; };
 const tick = () => new Promise(r => setImmediate(r));
-test('welcome dialog is accessible, has the sledge hammer and the required wording', () => {
+test('welcome dialog is accessible, has the wrench and the required wording', () => {
   const html = read('index.html'), dlg = html.match(/<dialog id="welcomeDlg"[\s\S]*?<\/dialog>/)[0];
   assert.match(dlg, /aria-labelledby="welcomeTitle"/); assert.match(dlg, /aria-describedby="welcomeText"/);
   assert.match(dlg, /Welcome to Typewrencher™/); assert.match(dlg, /Loading the dictionary/);

@@ -82,7 +82,7 @@ Everything runs in your browser, under a Content Security Policy that allows onl
 
 Forks are welcome. Typewrencher is released under CC0, so you can copy it and make your own version, for any purpose, with no credit required. I am not accepting pull requests, issues or feature requests for this project.
 
-If you publish a fork, please give it its own name and icon. The Typewrencher name, ™ mark and sledge icon are not covered by CC0, and a different name keeps your version from being mistaken for this one. Keep the CMUdict and word-frequency notices with the data (see License below).
+If you publish a fork, please give it its own name and icon. The Typewrencher name, ™ mark and wrench icon are not covered by CC0, and a different name keeps your version from being mistaken for this one. Keep the CMUdict and word-frequency notices with the data (see License below).
 
 ## License
 
@@ -91,4 +91,4 @@ The application code and the supplemental word list are dedicated to the public 
 - **CMUdict** (Carnegie Mellon University, BSD-style): `data/CMUdict-LICENSE.txt` and the notice in *Settings, Dictionary Options*.
 - **Word frequencies** (`data/wordfreq-en.txt`, from [wordfreq](https://github.com/LuminosoInsight/wordfreq), CC BY-SA 4.0): keep the file header and the credit in Settings. ShareAlike applies to that list only, not to the code.
 
-See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). The Typewrencher name, ™ mark and sledge icon are not covered by CC0.
+See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). The Typewrencher name, ™ mark and wrench icon are not covered by CC0.
