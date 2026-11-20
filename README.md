@@ -41,10 +41,11 @@ js/
   rhymes.js             rhyme index and lookup
   rhymes-ui.js          the Rhymes panel
   mirror.js             the text mirror layer: rhymed-word mark and retro block cursor
+  host.js               bridge to the planned Mac app's web view; does nothing in a browser
   editor.js dialogs.js preferences.js license.js
 data/                   CMUdict counts, full CMUdict, supplemental list, word frequencies (+ .gz twins)
 icons/ manifest.webmanifest sw.js    install and offline support
-tools/                  data builders and the release stamper
+tools/                  data builders, the release stamper, and build-site.js (the files GitHub Pages publishes)
 tests/app.test.js       test suite
 LICENSE  THIRD_PARTY_NOTICES.md
 ```

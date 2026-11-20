@@ -8,6 +8,7 @@ const base = path.resolve(__dirname, '..');
 require('../js/preferences.js');
 require('../js/counter.js');
 require('../js/editor.js');
+require('../js/host.js');
 require('../js/license.js');
 const read = file => fs.readFileSync(path.join(base, file), 'utf8');
 
@@ -65,7 +66,7 @@ function boot(saved = {}, native = true, opts = {}) {
     nodes[id].close = () => { nodes[id].removeAttribute('open'); nodes[id].emit('close'); };
   }
   const context = {
-    document, console, AppPreferences, SyllableCounter, AppEditor, CMU_LICENSE: globalThis.CMU_LICENSE,
+    document, console, AppPreferences, SyllableCounter, AppEditor, AppHost, CMU_LICENSE: globalThis.CMU_LICENSE,
     CMUDictionary: {load(progress) { loads++; return opts.dictLoad ? opts.dictLoad(progress) : new Promise(() => {}); }},
     matchMedia: query => query.includes('900px') ? mq : {matches: false, addEventListener() {}},
     localStorage: {getItem: k => saved[k] ?? null, setItem: (k, v) => { if (!opts.readOnlyStorage) saved[k] = v; }, get length() { return Object.keys(saved).length; }, key: i => Object.keys(saved)[i] ?? null},
@@ -817,7 +818,7 @@ test('every css/js reference in index.html carries a current content version (ru
 });
 test('stamp tool: an edited file is reported stale, restamping fixes only that file, and the check never writes', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stamp-'));
-  for (const f of ['index.html', 'css/styles.css', 'js/app.js', 'js/license.js', 'js/preferences.js', 'js/counter.js', 'js/rhymes.js', 'js/rhymes-ui.js', 'js/mirror.js', 'js/dictionary.js', 'js/editor.js', 'js/dialogs.js', 'tools/stamp.js']) {
+  for (const f of ['index.html', 'css/styles.css', 'js/app.js', 'js/license.js', 'js/preferences.js', 'js/counter.js', 'js/rhymes.js', 'js/rhymes-ui.js', 'js/mirror.js', 'js/dictionary.js', 'js/host.js', 'js/editor.js', 'js/dialogs.js', 'tools/stamp.js']) {
     fs.mkdirSync(path.dirname(path.join(dir, f)), {recursive: true}); fs.copyFileSync(path.join(base, f), path.join(dir, f));
   }
   assert.equal((await runStamp(dir, '--check')).code, 0);
@@ -825,7 +826,7 @@ test('stamp tool: an edited file is reported stale, restamping fixes only that f
   fs.appendFileSync(path.join(dir, 'js/app.js'), '\n// edit\n');
   const stale = await runStamp(dir, '--check'); assert.equal(stale.code, 1); assert.match(stale.stderr, /js\/app\.js/); assert.doesNotMatch(stale.stderr, /counter\.js/);
   assert.equal(fs.readFileSync(path.join(dir, 'index.html'), 'utf8'), before, 'check does not write');
-  assert.match((await runStamp(dir)).stdout, /Updated 1 of 11 references: js\/app\.js/);
+  assert.match((await runStamp(dir)).stdout, /Updated 1 of 12 references: js\/app\.js/);
   const after = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
   assert.notEqual(after, before); assert.equal((await runStamp(dir, '--check')).code, 0);
   assert.equal(after.replace(/js\/app\.js\?v=[a-f0-9]+/, '').length, before.replace(/js\/app\.js\?v=[a-f0-9]+/, '').length, 'only app.js changed');
@@ -1732,4 +1733,103 @@ test('first run: Settings opens once with About expanded; never again, never for
   boot(saved, true).nodes.resetPrefs.click(); assert.equal(saved['syl-welcomed'], '1', 'Reset to defaults leaves the flag alone');
   assert.equal(boot({}, true, {firstRun: true}).nodes.morePanel.getAttribute('open'), '');
   assert.equal(boot({}, true, {firstRun: true, readOnlyStorage: true}).nodes.morePanel.getAttribute('open'), null, 'unwritable storage: no auto-open');
+});
+
+// ---- Native host bridge (js/host.js): inert in a browser, active only inside the Mac app's web view
+function bootHost(saved = {}, opts = {}) {
+  const messages = [], listeners = {};
+  const handler = {postMessage(m) { messages.push(m); return opts.reply ? opts.reply(m) : Promise.resolve(); }};
+  const win = {addEventListener(type, f) { (listeners[type] ??= []).push(f); }, webkit: {messageHandlers: {typewrencher: handler}}};
+  const b = boot(saved, true, {...opts, globals: {window: win}});
+  return Object.assign(b, {messages, win, listeners, host: () => win.TypewrencherHost, types: () => messages.map(m => m.type)});
+}
+test('in a browser the host bridge is off: Open and Save stay visible and no global is added', () => {
+  const b = boot();
+  assert.equal(b.nodes.savebox.hidden, false);
+  assert.equal(AppHost.create({addEventListener() {}}, {}), null);
+  assert.equal(AppHost.create({webkit: {messageHandlers: {}}}, {}), null);
+  assert.equal(AppHost.create({webkit: {messageHandlers: {typewrencher: {}}}}, {}), null, 'a handler without postMessage is not a host');
+});
+test('inside the Mac app the page hides Open and Save, announces itself and exposes TypewrencherHost', () => {
+  const b = bootHost();
+  assert.equal(b.nodes.savebox.hidden, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(b.messages)), [{type: 'ready', protocol: 1}]); // the page runs in its own realm
+  assert.equal(b.host().protocol, 1);
+  for (const fn of ['setDocument', 'getText', 'exportText']) assert.equal(typeof b.host()[fn], 'function', fn);
+});
+test('host: edits are sent once, about 300 ms after typing stops, with the newest text', () => {
+  const b = bootHost(), n = b.nodes;
+  n.ed.value = 'c'; n.ed.emit('input'); n.ed.value = 'cat'; n.ed.emit('input');
+  assert.deepEqual(b.types(), ['ready'], 'nothing is sent while typing');
+  b.flush(300);
+  assert.deepEqual(b.messages.slice(1), [{type: 'textChanged', text: 'cat'}]);
+  b.flush(300); assert.equal(b.messages.length, 2, 'the same edit is not sent twice');
+});
+test('host: leaving the editor or hiding the page sends unsent text at once', () => {
+  const b = bootHost(), n = b.nodes;
+  n.ed.value = 'dog'; n.ed.emit('input'); n.ed.emit('blur');
+  assert.deepEqual(b.messages.at(-1), {type: 'textChanged', text: 'dog'});
+  n.ed.value = 'dog food'; n.ed.emit('input'); for (const f of b.listeners.pagehide) f();
+  assert.deepEqual(b.messages.at(-1), {type: 'textChanged', text: 'dog food'});
+});
+test('host: setDocument shows the text and name, recounts, and does not echo the text back', () => {
+  const b = bootHost(), n = b.nodes;
+  b.host().setDocument({text: 'cat sat\r\nthe mat\r\n', name: 'Morning Fog.txt'});
+  assert.equal(n.ed.value, 'cat sat\nthe mat\n', 'line endings are normalised like Open');
+  assert.equal(n.fname.value, 'Morning Fog');
+  assert.equal(n.sLines.textContent, '2'); assert.equal(n.sWords.textContent, '4');
+  b.flush(); assert.deepEqual(b.types(), ['ready'], 'nothing is sent back to the native side');
+  assert.equal(b.host().getText(), 'cat sat\nthe mat\n');
+});
+test('host: setDocument replaces text that was typed but not yet sent', () => {
+  const b = bootHost(), n = b.nodes;
+  n.ed.value = 'typed'; n.ed.emit('input');
+  b.host().setDocument({text: 'from disk', name: 'A'});
+  b.flush(); assert.deepEqual(b.types(), ['ready']);
+  assert.equal(n.ed.value, 'from disk');
+});
+test('host: setDocument keeps a clamped selection and tolerates missing fields', () => {
+  const b = bootHost(), n = b.nodes; let range = null;
+  n.ed.selectionStart = 10; n.ed.selectionEnd = 12; n.ed.setSelectionRange = (a, c) => { range = [a, c]; };
+  b.host().setDocument({text: 'short', name: 'A'});
+  assert.deepEqual(range, [5, 5]);
+  b.host().setDocument({}); assert.equal(n.ed.value, ''); assert.equal(n.fname.value, '');
+  b.host().setDocument(); assert.equal(n.ed.value, '');
+});
+test('host: exportText gives the text the native File > Export saves, with counts and totals when on', () => {
+  const b = bootHost({'syl-counts': 'on', 'syl-totals': 'on'});
+  b.host().setDocument({text: 'cat', name: 'Poem.txt'});
+  assert.match(b.host().exportText(), /Poem\nLines: 1 \| Words: 1 \| Syllables: 1/);
+  assert.match(b.host().exportText(), /cat  \(1\)/);
+  assert.equal(bootHost().host().exportText(), '', 'plain by default');
+});
+test('host: erasing the text is reported to the native side', () => {
+  const b = bootHost(), n = b.nodes; n.ed.value = 'a poem'; n.ed.emit('input'); b.flush(300);
+  n.clearBtn.click(); n.clearBtn.click(); b.flush(300);
+  assert.deepEqual(b.messages.at(-1), {type: 'textChanged', text: ''});
+});
+test('host: dropping a file does not replace the document; the native side opens files', () => {
+  const b = bootHost(), n = b.nodes; let prevented = false;
+  n.ed.value = 'keep me'; n.ed.emit('input');
+  n.ed.emit('drop', {dataTransfer: {files: [{name: 'x.txt', size: 3, arrayBuffer: () => Promise.resolve(new ArrayBuffer(3))}]}, preventDefault() { prevented = true; }});
+  assert.equal(prevented, true); assert.equal(n.ed.value, 'keep me');
+});
+test('host: the download hook asks the native side to save and maps a cancel to code declined', async () => {
+  const b = bootHost(); b.nodes.ed.value = 'cat'; b.nodes.ed.emit('input'); b.nodes.save.click();
+  assert.deepEqual(b.messages.at(-1), {type: 'export', filename: 'title.txt', data: 'cat'});
+  const make = reply => AppHost.create({webkit: {messageHandlers: {typewrencher: {postMessage: () => reply}}}}, {setTimeout, clearTimeout});
+  await make(Promise.resolve()).downloads.save({filename: 'a.txt', data: 'x'});
+  await assert.rejects(make(Promise.reject(new Error('User declined'))).downloads.save({filename: 'a.txt', data: 'x'}), {code: 'declined'});
+  await assert.rejects(make(Promise.reject(new Error('disk full'))).downloads.save({filename: 'a.txt', data: 'x'}), {code: 'failed'});
+});
+test('host: a handler that throws never breaks the page', () => {
+  const host = AppHost.create({webkit: {messageHandlers: {typewrencher: {postMessage() { throw new Error('gone'); }}}}}, {setTimeout, clearTimeout});
+  assert.doesNotThrow(() => { host.post({type: 'ready'}); host.textChanged('x'); host.flush(); });
+});
+test('host: the offline worker is not registered inside the Mac app', () => {
+  const src = read('js/app.js'); assert.match(src, /if \(!host && typeof navigator/);
+});
+test('host.js is in the page and its stamp is current', () => {
+  assert.match(read('index.html'), /<script defer src="js\/host\.js\?v=[a-f0-9]{10}"><\/script>/);
+  assert.ok(read('index.html').indexOf('js/host.js') < read('index.html').indexOf('js/app.js'), 'host.js loads before app.js');
 });
