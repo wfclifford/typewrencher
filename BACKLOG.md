@@ -7,6 +7,7 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 ## Ready
 
 - **"Done" success label.** Change the `.txt` button label to "Done" on both paths, replacing "Shared" (iOS share sheet) and "Exporting" (downloads). The status line can carry more detail, such as "Done title.txt". Update tests.
+- **Version in About.** Show a release number and a build id on the last line of the About section, for example `Version 0.1.12 · build 37767cff`. Both are automatic, with nothing to bump by hand. The build id is the short content hash `tools/stamp.js` already computes for `sw.js`. The release number is `0.1.N`; `stamp.js` raises N whenever it finds the site's files changed, and keeps it in a committed file (for example `js/version.js`) so it also works offline, in tests and in the Mac app bundle. `stamp.js --check` fails when the shown number is stale, and a test confirms About displays what the file says. Use the same line in the Mac app later.
 
 ## Idea
 
