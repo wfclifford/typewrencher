@@ -42,6 +42,7 @@ js/
   rhymes-ui.js          the Rhymes panel
   mirror.js             the text mirror layer: rhymed-word mark and retro block cursor
   host.js               bridge to the planned Mac app's web view; does nothing in a browser
+  version.js            release number and build id, shown on the last line of About (kept current by tools/)
   editor.js dialogs.js preferences.js license.js
 data/                   CMUdict counts, full CMUdict, supplemental list, word frequencies (+ .gz twins)
 icons/ manifest.webmanifest sw.js    install and offline support

@@ -44,12 +44,15 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the release number is counted from the full history
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       # Publish only the website's files (see tools/build-site.js), not tests, tools or the Mac app.
+      # --release sets the release number shown in About: merges on main that changed a site file.
       - name: Build the site
-        run: node tools/build-site.js
+        run: node tools/build-site.js --release
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
