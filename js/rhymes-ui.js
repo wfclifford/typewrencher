@@ -1,6 +1,6 @@
 /*
  * rhymes-ui.js - rhyme panel that follows the caret in a <textarea>. Requires rhymes.js.
- * Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE).
+ * Typewrencher. Dedicated to the public domain under CC0 1.0 (see LICENSE).
  * Styles live in css/styles.css (.rhyme-*), which use the app's own variables.
  *
  *   const panel = RhymePanel.attach({ textarea, container, dict, say, mode, strict });

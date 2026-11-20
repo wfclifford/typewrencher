@@ -1,26 +1,26 @@
 <!DOCTYPE html>
 <html lang="en" data-tone="terminal" data-theme="dark" data-font="mono">
 <head>
-<!-- Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE). CMUdict and the word-frequency list keep their own licenses; see LICENSE. -->
+<!-- Typewrencher. Dedicated to the public domain under CC0 1.0 (see LICENSE). CMUdict and the word-frequency list keep their own licenses; see LICENSE. -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Content Security Policy: only this site's own files run; the two GitHub hosts are used solely by the optional "refresh CMUdict" tool.
      style-src keeps 'unsafe-inline' because the colour swatches use style="" attributes; there are no inline scripts. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<title>Word Hammer™</title>
+<title>Typewrencher™</title>
 <meta name="theme-color" content="#020502">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Word Hammer">
+<meta name="apple-mobile-web-app-title" content="Typewrencher">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/styles.css?v=a87f381b27">
+<link rel="stylesheet" href="css/styles.css?v=86190c75ed">
 </head>
 <body>
 <main class="app">
-  <h1 class="sr">Word Hammer™</h1>
+  <h1 class="sr">Typewrencher™</h1>
   <div id="status" class="sr" role="status" aria-live="polite" aria-atomic="true"></div>
   <header>
     <button id="clearBtn" type="button" class="tog clear" aria-label="Erase text and filename" aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M12 2a9 9 0 0 0-9 9c0 2.8 1.3 5 3.3 6.2V19.5A1.5 1.5 0 0 0 7.8 21h8.4a1.5 1.5 0 0 0 1.5-1.5v-2.3C19.7 16 21 13.8 21 11a9 9 0 0 0-9-9zM8.5 8.8a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 1 0 0-4.4zM15.5 8.8a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 1 0 0-4.4zM12 13.2l1.3 2.4h-2.6zM10.3 17.4h.9V21h-.9z M12.8 17.4h.9V21h-.9z"/></svg><span id="clearLabel"></span></button>
@@ -80,16 +80,16 @@
     </div>
 
     <details id="aboutAcc" class="acc">
-      <summary>About Word Hammer™ <svg class="wh-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><g transform="rotate(45 12 12)"><rect x="4.5" y="2.5" width="15" height="8.5" rx="1.6"/><rect x="10.3" y="9" width="3.4" height="12.5" rx="1.7"/></g></svg></summary>
+      <summary>About Typewrencher™ <svg class="wh-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><g transform="rotate(45 12 12)"><rect x="4.5" y="2.5" width="15" height="8.5" rx="1.6"/><rect x="10.3" y="9" width="3.4" height="12.5" rx="1.7"/></g></svg></summary>
       <div class="acc-body">
         <p>Pound your prose, poetry, and lyrics into submission!</p> 
         <p>Type, paste, or upload a text file. Each line shows its syllable count in the margin. <i class="flag" role="img" aria-label="tilde">~</i> means a word was estimated; <i class="flag" role="img" aria-label="plus-minus">&plusmn;</i> means it has more than one common pronunciation.</p>
         <p>There is no Save, only Export! Tap the skull or refresh your browser to erase the text and filename.</p>
         <p>Counts and rhymes come from CMUdict, a pronunciation dictionary, plus additions for words whose syllable count varies. Words in neither list are estimated. Dictionary Options below contain the dictionary controls for syllables and rhymes and the full CMUdict license.</p>
         <p><strong>ABSOLUTELY NO WARRANTY. USE AT YOUR OWN RISK. MAKE A BETTER VERSION YOURSELF.</strong></p>
-        <p>Word Hammer™</p>
-        <p><strong>Word Hammer™</strong></p>
-        <p><strong>WORD HAMMER™</strong></p>
+        <p>Typewrencher™</p>
+        <p><strong>Typewrencher™</strong></p>
+        <p><strong>TYPEWRENCHER™</strong></p>
       </div>
     </details>
 
@@ -226,7 +226,7 @@
     <div class="hammer-scene" aria-hidden="true">
       <svg class="hammer" viewBox="0 0 24 24" width="72" height="72" focusable="false" fill="var(--count)"><g transform="rotate(45 12 12)"><rect x="4.5" y="2.5" width="15" height="8.5" rx="1.6"/><rect x="10.3" y="9" width="3.4" height="12.5" rx="1.7"/></g></svg>
     </div>
-    <h2 id="welcomeTitle" class="title">Welcome to Word Hammer™</h2>
+    <h2 id="welcomeTitle" class="title">Welcome to Typewrencher™</h2>
     <p id="welcomeText">Loading the dictionary… You can start typing now. Counts are estimates until it finishes.</p>
     <progress id="welcomeBar" class="welcome-bar" max="100" aria-hidden="true"></progress>
     <p id="welcomeProgress" class="opt-hint"></p>
@@ -247,14 +247,14 @@
 </dialog>
 
 <script defer src="js/license.js?v=874a19f480"></script>
-<script defer src="js/preferences.js?v=b1ee98a3e2"></script>
-<script defer src="js/counter.js?v=a808098483"></script>
-<script defer src="js/rhymes.js?v=ec0f74f8f3"></script>
-<script defer src="js/mirror.js?v=04852298a6"></script>
-<script defer src="js/rhymes-ui.js?v=6b6a1c2be5"></script>
-<script defer src="js/dictionary.js?v=d52c8ea87d"></script>
-<script defer src="js/editor.js?v=5bad491073"></script>
-<script defer src="js/dialogs.js?v=a6c5b72e1e"></script>
-<script defer src="js/app.js?v=9f4b0e661e"></script>
+<script defer src="js/preferences.js?v=089560d5dc"></script>
+<script defer src="js/counter.js?v=12a5bf54da"></script>
+<script defer src="js/rhymes.js?v=923679a75b"></script>
+<script defer src="js/mirror.js?v=302da1e7fd"></script>
+<script defer src="js/rhymes-ui.js?v=2453d3dfd2"></script>
+<script defer src="js/dictionary.js?v=96c3c5f5fe"></script>
+<script defer src="js/editor.js?v=12d01ab137"></script>
+<script defer src="js/dialogs.js?v=6e6803ddbf"></script>
+<script defer src="js/app.js?v=1209d8f880"></script>
 </body>
 </html>

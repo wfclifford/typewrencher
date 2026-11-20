@@ -1,12 +1,12 @@
 /*
  * rhymes.js - rhyme lookup on top of CMUdict. No dependencies, no build step.
- * Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE).
+ * Typewrencher. Dedicated to the public domain under CC0 1.0 (see LICENSE).
  * The CMUdict data it reads keeps its own license (below).
  *
  * CMUdict is BSD-licensed. Its copyright notice and license (data/CMUdict-LICENSE.txt, also shown
  * in the app under Dictionary Options) must stay with the dictionary data wherever it is deployed.
  *
- * Changes for the Word Hammer app: parseAsync() builds the index in slices so the page stays
+ * Changes for the Typewrencher app: parseAsync() builds the index in slices so the page stays
  * responsive; Rhymes.parse() is otherwise unchanged.
  *
  *   const dict = await Rhymes.load('cmudict.txt');   // or Rhymes.parse(text) / Rhymes.parseAsync(text)

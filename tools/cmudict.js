@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE).
+// Typewrencher. Dedicated to the public domain under CC0 1.0 (see LICENSE).
 // Local CMUdict helper. No dependencies; needs Node 18+ (built-in fetch).
 //
 //   node tools/cmudict.js fetch [--from <base-url>] [--out <dir>]

@@ -1,4 +1,4 @@
-// Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE).
+// Typewrencher. Dedicated to the public domain under CC0 1.0 (see LICENSE).
 (() => {
   'use strict';
   // The dictionary is read from this site first (see data/README.md): the compact

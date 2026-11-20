@@ -1,6 +1,6 @@
 # Third-party notices
 
-Word Hammer's own code and its supplemental word list are dedicated to the public domain under CC0 1.0
+Typewrencher's own code and its supplemental word list are dedicated to the public domain under CC0 1.0
 (see LICENSE). The material below is NOT covered by that dedication: it keeps its own license, and its
 notices must stay with it.
 

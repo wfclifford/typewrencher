@@ -1,4 +1,4 @@
-# Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE).
+# Typewrencher. Dedicated to the public domain under CC0 1.0 (see LICENSE).
 # Supplemental syllable counts for words CMUdict lists with only one count.
 # Format: word count [count ...]   (first count is the primary, used for totals)
 # Counts are merged after CMUdict's own; a word listed here is flagged "variable".

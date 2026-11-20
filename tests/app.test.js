@@ -1,4 +1,4 @@
-// Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE).
+// Typewrencher. Dedicated to the public domain under CC0 1.0 (see LICENSE).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -172,7 +172,7 @@ test('drawer order: About, Display Options, Export Options, Dictionary Options, 
   for (const id of ['lblTone', 'lblTheme', 'lblFont', 'lblSize', 'sizeUp', 'wrapToggle']) assert.ok(pos(id) > pos('displayAcc') && pos(id) < pos('exportAcc'), id + ' is in Display Options');
   for (const id of ['exportCounts', 'exportTotals']) assert.ok(pos(id) > pos('exportAcc') && pos(id) < pos('advancedAcc'), id + ' is in Export Options');
   for (const id of ['useCMUdict', 'retryDictionary', 'advancedLicense']) assert.ok(pos(id) > pos('advancedAcc') && pos(id) < pos('resetPrefs'), id);
-  assert.match(drawer, /About Word Hammer™/); assert.match(drawer, /<summary>Display Options<\/summary>/); assert.match(drawer, /<summary>Export Options<\/summary>/);
+  assert.match(drawer, /About Typewrencher™/); assert.match(drawer, /<summary>Display Options<\/summary>/); assert.match(drawer, /<summary>Export Options<\/summary>/);
   assert.equal(drawer.includes('id="clearBtn"'), false);
   for (const gone of ['advancedDlg', 'advancedBtn', 'infoDlg', 'infoBtn']) assert.equal(html.includes(gone), false, gone);
 });
@@ -899,7 +899,7 @@ const tick = () => new Promise(r => setImmediate(r));
 test('welcome dialog is accessible, has the sledge hammer and the required wording', () => {
   const html = read('index.html'), dlg = html.match(/<dialog id="welcomeDlg"[\s\S]*?<\/dialog>/)[0];
   assert.match(dlg, /aria-labelledby="welcomeTitle"/); assert.match(dlg, /aria-describedby="welcomeText"/);
-  assert.match(dlg, /Welcome to Word Hammer™/); assert.match(dlg, /Loading the dictionary/);
+  assert.match(dlg, /Welcome to Typewrencher™/); assert.match(dlg, /Loading the dictionary/);
   assert.match(dlg, /<div class="hammer-scene" aria-hidden="true">/); assert.match(dlg, /<button id="welcomeClose"[^>]*>Close<\/button>/);
   const css = read('css/styles.css');
   assert.match(css, /@keyframes hammer-spin/); assert.match(css, /prefers-reduced-motion: reduce\) \{\s*\.hammer \{ animation: none; \}/);
@@ -1021,9 +1021,9 @@ test('About text is as written', () => {
     'There is no Save, only Export! Tap the skull or refresh your browser to erase the text and filename.',
     'Counts and rhymes come from CMUdict, a pronunciation dictionary, plus additions for words whose syllable count varies. Words in neither list are estimated. Dictionary Options below contain the dictionary controls for syllables and rhymes and the full CMUdict license.',
     'ABSOLUTELY NO WARRANTY. USE AT YOUR OWN RISK. MAKE A BETTER VERSION YOURSELF.',
-    'Word Hammer™', 'Word Hammer™', 'WORD HAMMER™'
+    'Typewrencher™', 'Typewrencher™', 'TYPEWRENCHER™'
   ]);
-  assert.doesNotMatch(about, /<p><strong>Word Hammer™<\/strong><\/p>[\s\S]*<p><strong>Word Hammer™<\/strong><\/p>[\s\S]*<p><strong>WORD/, 'the first trailing line is plain, the next two are bold');
+  assert.doesNotMatch(about, /<p><strong>Typewrencher™<\/strong><\/p>[\s\S]*<p><strong>Typewrencher™<\/strong><\/p>[\s\S]*<p><strong>WORD/, 'the first trailing line is plain, the next two are bold');
   assert.match(paras[4], /^<strong>ABSOLUTELY NO WARRANTY[^<]*<\/strong>$/, 'the warranty line is bold');
   assert.equal((paras[1].match(/class="flag"/g) || []).length, 2, 'the same ~ and \u00b1 icons as the margin');
 });
@@ -1410,11 +1410,11 @@ test('tools: every data file written also has a .gz twin that unpacks to the sam
   for (const name of shipped) assert.equal(zlib2.gunzipSync(fs.readFileSync(path.join(base, name + '.gz'))).toString('utf8'), read(name), name + '.gz matches its plain file');
 });
 
-test('Word Hammer name: title, heading, About, welcome dialog and spinner; no leftover old name', () => {
+test('Typewrencher name: title, heading, About, welcome dialog and spinner; no leftover old name', () => {
   const html = read('index.html');
-  assert.match(html, /<title>Word Hammer™<\/title>/);
-  assert.match(html, /<h1 class="sr">Word Hammer™<\/h1>/);
-  assert.match(html, /<summary>About Word Hammer™ <svg class="wh-icon"[^>]*aria-hidden="true"/);
+  assert.match(html, /<title>Typewrencher™<\/title>/);
+  assert.match(html, /<h1 class="sr">Typewrencher™<\/h1>/);
+  assert.match(html, /<summary>About Typewrencher™ <svg class="wh-icon"[^>]*aria-hidden="true"/);
   assert.doesNotMatch(html, /Syllable Counter/);
   const dlg = html.slice(html.indexOf('id="welcomeDlg"'));
   assert.doesNotMatch(dlg.slice(0, dlg.indexOf('</dialog>')), /M12 2a9 9 0/, 'the skull is gone from the loading dialog');
@@ -1472,7 +1472,7 @@ test('alignment: the hidden copy takes its wrapping from the text box; text is n
 const pngSize = file => { const b = fs.readFileSync(path.join(base, file)); assert.equal(b.slice(1, 4).toString(), 'PNG', file); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
 test('manifest and icons: installable name, standalone display, real icon files of the declared sizes', () => {
   const m = JSON.parse(read('manifest.webmanifest'), (k, v) => v);
-  assert.equal(m.name, 'Word Hammer'); assert.equal(m.display, 'standalone'); assert.equal(m.start_url, './');
+  assert.equal(m.name, 'Typewrencher'); assert.equal(m.display, 'standalone'); assert.equal(m.start_url, './');
   for (const icon of m.icons) {
     assert.ok(fs.existsSync(path.join(base, icon.src)), icon.src);
     if (icon.type === 'image/png') assert.deepEqual(pngSize(icon.src), icon.sizes.split('x').map(Number), icon.src);
@@ -1481,7 +1481,7 @@ test('manifest and icons: installable name, standalone display, real icon files 
   assert.deepEqual(pngSize('icons/apple-touch-icon.png'), [180, 180]);
   const html = read('index.html');
   assert.match(html, /<link rel="manifest" href="manifest\.webmanifest">/); assert.match(html, /<link rel="apple-touch-icon" href="icons\/apple-touch-icon\.png">/);
-  assert.match(html, /<link rel="icon" href="icons\/icon\.svg" type="image\/svg\+xml">/); assert.match(html, /<meta name="apple-mobile-web-app-title" content="Word Hammer">/);
+  assert.match(html, /<link rel="icon" href="icons\/icon\.svg" type="image\/svg\+xml">/); assert.match(html, /<meta name="apple-mobile-web-app-title" content="Typewrencher">/);
   assert.match(html, /<meta name="theme-color" content="#020502">/);
 });
 test('offline: the app registers the service worker on https or localhost only, and the page works if it cannot', () => {
@@ -1531,7 +1531,7 @@ function swHarness({online = true, origin = 'https://x.test'} = {}) {
 }
 test('offline worker: installs the file list, serves saved copies offline, never touches other sites or range requests', async () => {
   const w = swHarness(); await w.send('install', {}); await w.send('activate', {});
-  assert.ok(w.caches.size === 1 && [...w.caches.keys()][0].startsWith('wordhammer-')); assert.ok(w.fetched.every(u => /#reload$/.test(u)), 'install bypasses the HTTP cache');
+  assert.ok(w.caches.size === 1 && [...w.caches.keys()][0].startsWith('typewrencher-')); assert.ok(w.fetched.every(u => /#reload$/.test(u)), 'install bypasses the HTTP cache');
   const css = [...w.caches.values()][0], cssKey = [...css.keys()].find(k => k.includes('css/styles.css'));
   w.state.online = false;
   assert.equal((await w.get(cssKey)).body, 'net:' + cssKey, 'a saved stylesheet is served with no network');
@@ -1550,9 +1550,9 @@ test('offline worker: online page loads use the network first and refresh the sa
   w.state.online = false; assert.equal((await w.get('https://x.test/data/cmudict.counts.txt.gz')).body, 'net:https://x.test/data/cmudict.counts.txt.gz', 'a reloaded copy is saved');
 });
 test('offline worker: a new version deletes old saved copies', async () => {
-  const w = swHarness(); w.caches.set('wordhammer-old', new Map()); w.caches.set('other-app', new Map());
+  const w = swHarness(); w.caches.set('typewrencher-old', new Map()); w.caches.set('wordhammer-abc', new Map()); w.caches.set('other-app', new Map());
   await w.send('install', {}); await w.send('activate', {});
-  assert.equal(w.caches.has('wordhammer-old'), false); assert.equal(w.caches.has('other-app'), true, 'only this app’s caches');
+  assert.equal(w.caches.has('typewrencher-old'), false); assert.equal(w.caches.has('wordhammer-abc'), false, 'caches saved under the earlier name are cleaned up'); assert.equal(w.caches.has('other-app'), true, 'only this app’s caches');
 });
 
 test('retro_term and retro_amber are monochrome like B&W: one ink on one background, no tints, in light and dark', () => {

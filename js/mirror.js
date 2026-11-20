@@ -1,6 +1,6 @@
 /*
  * mirror.js - the transparent text layer drawn over the editor (#hl).
- * Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE).
+ * Typewrencher. Dedicated to the public domain under CC0 1.0 (see LICENSE).
  *
  * It copies the editor's text, in the editor's font and wrapping, so two things can be drawn exactly over it:
  *   - a mark on the word the Rhymes panel is checking (setMark), and

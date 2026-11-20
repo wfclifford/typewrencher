@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE).
+// Typewrencher. Dedicated to the public domain under CC0 1.0 (see LICENSE).
 // Turns wordfreq-en-25000-log.json (github.com/aparrish/wordfreq-en-25000, from the wordfreq library)
 // into data/wordfreq-en.txt: the words only, one per line, most common first. The Rhymes panel
 // uses the line order as the rank, so common words come first in each group.

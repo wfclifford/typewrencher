@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE).
+// Typewrencher. Dedicated to the public domain under CC0 1.0 (see LICENSE).
 // Cache-busting for the site's own CSS and JS. No dependencies.
 //
 //   node tools/stamp.js            rewrite index.html so every css/ and js/ reference ends in

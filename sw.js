@@ -1,6 +1,6 @@
 /*
- * Word Hammer service worker: lets the app open and work offline after one visit.
- * Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE).
+ * Typewrencher service worker: lets the app open and work offline after one visit.
+ * Typewrencher. Dedicated to the public domain under CC0 1.0 (see LICENSE).
  * The block between the GENERATED markers is rewritten by `node tools/stamp.js` (the file list and a
  * version that changes whenever any of the site's files change). Do not edit it by hand.
  *
@@ -17,12 +17,13 @@
 'use strict';
 
 // BEGIN GENERATED
-const VERSION = '39cfcc49c3';
-const CORE = ["index.html","css/styles.css?v=a87f381b27","js/license.js?v=874a19f480","js/preferences.js?v=b1ee98a3e2","js/counter.js?v=a808098483","js/rhymes.js?v=ec0f74f8f3","js/mirror.js?v=04852298a6","js/rhymes-ui.js?v=6b6a1c2be5","js/dictionary.js?v=d52c8ea87d","js/editor.js?v=5bad491073","js/dialogs.js?v=a6c5b72e1e","js/app.js?v=9f4b0e661e","manifest.webmanifest","icons/icon.svg","icons/icon-192.png","icons/icon-512.png","icons/icon-maskable-512.png","icons/apple-touch-icon.png"];
+const VERSION = 'd46de8f75d';
+const CORE = ["index.html","css/styles.css?v=86190c75ed","js/license.js?v=874a19f480","js/preferences.js?v=089560d5dc","js/counter.js?v=12a5bf54da","js/rhymes.js?v=923679a75b","js/mirror.js?v=302da1e7fd","js/rhymes-ui.js?v=2453d3dfd2","js/dictionary.js?v=96c3c5f5fe","js/editor.js?v=12d01ab137","js/dialogs.js?v=6e6803ddbf","js/app.js?v=1209d8f880","manifest.webmanifest","icons/icon.svg","icons/icon-192.png","icons/icon-512.png","icons/icon-maskable-512.png","icons/apple-touch-icon.png"];
 const OPTIONAL = ["data/cmudict.json","data/cmudict.counts.txt.gz","data/variable-words.txt","data/CMUdict-LICENSE.txt"];
 // END GENERATED
 
-const PREFIX = 'wordhammer-';
+const PREFIX = 'typewrencher-';
+const LEGACY_PREFIX = 'wordhammer-'; // caches saved under the app's earlier name are removed too
 const CACHE = PREFIX + VERSION;
 const PAGE = new URL('index.html', self.registration.scope).href;
 const NAV_TIMEOUT_MS = 4000;
@@ -39,7 +40,7 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
-    for (const key of await caches.keys()) if (key.startsWith(PREFIX) && key !== CACHE) await caches.delete(key);
+    for (const key of await caches.keys()) if ((key.startsWith(PREFIX) && key !== CACHE) || key.startsWith(LEGACY_PREFIX)) await caches.delete(key);
     await self.clients.claim();
   })());
 });

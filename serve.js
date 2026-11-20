@@ -1,4 +1,4 @@
-// Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE).
+// Typewrencher. Dedicated to the public domain under CC0 1.0 (see LICENSE).
 // Optional dependency-free static server: node serve.js
 const http = require('node:http');
 const fs = require('node:fs');
