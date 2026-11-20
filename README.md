@@ -1,6 +1,6 @@
 # Typewrencher™
 
-**Pound your prose, poetry, and lyrics into submission.**
+**Typewrencher wrenches words.**
 
 Typewrencher is a small, private writing tool. Type or paste text and it shows the syllable count for every line, with running totals, and can suggest rhymes for the word you are on. It is plain HTML, CSS and JavaScript: no build step, no framework, no account, no tracking. Your text never leaves your device, unless you explicitly export it to a cloud drive or other device.
 

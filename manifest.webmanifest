@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Typewrencher",
   "short_name": "Typewrencher",
-  "description": "Pound your prose, poetry, and lyrics into submission. Syllable counts and rhymes, right in your browser.",
+  "description": "Typewrencher wrenches words. Syllable counts and rhymes, right in your browser.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

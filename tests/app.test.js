@@ -1016,7 +1016,7 @@ test('About text is as written', () => {
   const paras = [...about.matchAll(/<p>([\s\S]*?)<\/p>/g)].map(m => m[1]);
   const plain = p => p.replace(/<[^>]+>/g, '').replace(/&rsquo;/g, '\u2019').replace(/&plusmn;/g, '\u00b1');
   assert.deepEqual(paras.map(plain), [
-    'Pound your prose, poetry, and lyrics into submission!',
+    'Typewrencher wrenches words.',
     'Type, paste, or upload a text file. Each line shows its syllable count in the margin. ~ means a word was estimated; \u00b1 means it has more than one common pronunciation.',
     'There is no Save, only Export! Tap the skull or refresh your browser to erase the text and filename.',
     'Counts and rhymes come from CMUdict, a pronunciation dictionary, plus additions for words whose syllable count varies. Words in neither list are estimated. Dictionary Options below contain the dictionary controls for syllables and rhymes and the full CMUdict license.',
