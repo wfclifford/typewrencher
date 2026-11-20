@@ -1,5 +1,5 @@
 # Typewrencher. Dedicated to the public domain under CC0 1.0 (see LICENSE).
-# Runs the tests and the stamp check on every push and pull request to main; on main, publishes the site to GitHub Pages.
+# Runs the tests, the stamp check and a site build on every push and pull request to main; on main, publishes only the built site (see tools/build-site.js) to GitHub Pages.
 # One-time setup: repository Settings > Pages > Source: "GitHub Actions".
 name: Test and deploy
 
@@ -29,6 +29,8 @@ jobs:
         run: node tools/stamp.js --check
       - name: Tests
         run: node tests/app.test.js
+      - name: Build the site (fails if a file the page needs is not published)
+        run: node tools/build-site.js
 
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -42,9 +44,15 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Publish only the website's files (see tools/build-site.js), not tests, tools or the Mac app.
+      - name: Build the site
+        run: node tools/build-site.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
