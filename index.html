@@ -16,7 +16,7 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/styles.css?v=305c238ac1">
+<link rel="stylesheet" href="css/styles.css?v=c4e0d24316">
 </head>
 <body>
 <main class="app">
@@ -46,9 +46,12 @@
   </div>
 
   <section class="rhyme-dock" id="rhymeDock" aria-label="Rhymes" hidden>
-    <button id="rhymeToggle" type="button" class="rhyme-toggle" aria-expanded="false" aria-controls="rhymePanel">
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6"/></svg><span id="rhymeLabel">Rhymes</span>
-    </button>
+    <div class="rhyme-head">
+      <button id="rhymeToggle" type="button" class="rhyme-toggle" aria-expanded="false" aria-controls="rhymePanel">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6"/></svg><span id="rhymeLabel">Rhymes</span>
+      </button>
+      <span id="rhymeGroup" class="rhyme-group-now" aria-hidden="true"></span>
+    </div>
     <div id="rhymePanel" class="rhyme-panel" hidden></div>
   </section>
 
@@ -255,6 +258,6 @@
 <script defer src="js/dictionary.js?v=96c3c5f5fe"></script>
 <script defer src="js/editor.js?v=12d01ab137"></script>
 <script defer src="js/dialogs.js?v=6e6803ddbf"></script>
-<script defer src="js/app.js?v=1209d8f880"></script>
+<script defer src="js/app.js?v=af1fb33105"></script>
 </body>
 </html>

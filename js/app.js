@@ -614,6 +614,27 @@
     rhymeLabel.textContent = info ? 'Rhymes \u00b7 ' + info.word + (info.detail ? ' \u00b7 ' + info.count : '') : 'Rhymes';
     if (info && info.detail) rhymeToggle.setAttribute('title', info.detail); else rhymeToggle.removeAttribute('title');
   }
+  // With the keyboard open the header line also names the syllable group at the left (or top) edge of the chips; it is a
+  // decorative copy (aria-hidden), the groups themselves stay labelled for screen readers.
+  const rhymeGroupNow = document.getElementById('rhymeGroup'), rhymePanelEl = document.getElementById('rhymePanel');
+  function syncRhymeGroup() {
+    if (!rhymeGroupNow || !rhymePanelEl) return;
+    const groups = rhymePanelEl.querySelectorAll ? rhymePanelEl.querySelectorAll('.rhyme-group') : [];
+    if (!groups.length) { rhymeGroupNow.textContent = ''; return; }
+    const tall = document.documentElement.classList.contains('kb-tall'), edge = rhymePanelEl.getBoundingClientRect();
+    let current = groups[0];
+    groups.forEach(function (g) {
+      const pill = g.querySelector('.rhyme-pill'); if (!pill) return;
+      const r = pill.getBoundingClientRect();
+      if (tall ? r.top <= edge.top + 4 : r.left <= edge.left + 4) current = g;
+    });
+    const label = current.querySelector('.rhyme-group-label');
+    rhymeGroupNow.textContent = label ? label.textContent : '';
+  }
+  if (rhymePanelEl) {
+    rhymePanelEl.addEventListener('scroll', syncRhymeGroup);
+    if (typeof MutationObserver === 'function') new MutationObserver(syncRhymeGroup).observe(rhymePanelEl, { childList: true });
+  }
   // The word is marked in the text only while the Rhymes panel is on and open.
   function rhymesShown() { return rhymesEnabled.checked && rhymeToggle.getAttribute('aria-expanded') === 'true'; }
   function syncRhymeHighlight() { if (rhymeCtl && rhymeCtl.setHighlight) rhymeCtl.setHighlight(rhymesShown()); }
@@ -753,6 +774,8 @@
     const covered = (typeof innerHeight === 'number' ? innerHeight : vv.height) - vv.height;
     const on = !!touch && (vv.scale || 1) < 1.05 && (vv.height < 520 || covered > 120);
     root.classList.toggle('kb', on);
+    root.classList.toggle('kb-tall', on && vv.height >= 420); // room for two rows of chips
+    if (typeof syncRhymeGroup === 'function') syncRhymeGroup();
     if (on) { root.style.setProperty('--vvh', Math.round(vv.height) + 'px'); root.style.setProperty('--vvt', Math.round(vv.offsetTop || 0) + 'px'); }
     else { root.style.removeProperty('--vvh'); root.style.removeProperty('--vvt'); }
   }

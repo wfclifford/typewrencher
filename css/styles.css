@@ -1063,20 +1063,30 @@ html:not(.kb) .rhyme-panel { border: 0; border-top: 1px solid var(--rule); borde
 html.kb .app { position: fixed; left: 0; right: 0; top: var(--vvt, 0px); width: 100%; height: var(--vvh, 100%); padding-bottom: 0.4rem; }
 html.kb .sheet { min-height: calc(var(--lh) * 3 + var(--pad) * 2); }
 html.kb .dict-row { display: none; }
-html.kb .rhyme-dock { flex-direction: row; align-items: center; gap: .5rem; min-width: 0; }
-html.kb .rhyme-toggle { flex: none; max-width: 58%; overflow: hidden; padding-inline: .5rem; gap: .25rem; }
+/* Rhymes with the keyboard open: one bordered card. The header line holds "Rhymes · word · count" and the label of the syllable
+   group at the left edge (app.js keeps it current); under it, the chips. Short screens get one row of chips that scrolls sideways;
+   screens tall enough (html.kb-tall, 420px or more visible) get two rows. The editor keeps at least three lines (see .sheet). */
+.rhyme-head { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.rhyme-group-now { display: none; }
+html.kb .rhyme-dock { flex: none; flex-direction: column; align-items: stretch; gap: 0; min-width: 0; border: 1px solid var(--edge); border-radius: 8px; background: var(--sheet); padding: .2rem .5rem .3rem; overflow: hidden; }
+html.kb .rhyme-head { min-height: 2rem; }
+html.kb .rhyme-toggle, html.kb .rhyme-toggle[aria-expanded="true"] { flex: none; align-self: auto; width: auto; max-width: 70%; overflow: hidden; border: 0; border-radius: 0; background: transparent; color: var(--ink); box-shadow: none; padding: .2rem .1rem; min-height: 2rem; gap: .25rem; }
 html.kb .rhyme-toggle svg { width: .9rem; height: .9rem; }
+html.kb .rhyme-toggle[aria-expanded="true"] + .rhyme-group-now { display: block; font: 700 .72rem/1.2 var(--sans); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 html.kb .rhyme-panel:not([hidden]) {
-  flex: 1; min-width: 0; max-height: none; border: 0; padding: 0; background: transparent;
-  display: flex; flex-wrap: nowrap; align-items: center; gap: .35rem; overflow-x: auto; overflow-y: hidden;
+  flex: none; min-width: 0; max-height: none; border: 0; border-radius: 0; padding: 0; background: transparent;
+  display: flex; flex-wrap: nowrap; align-items: center; gap: .3rem; overflow-x: auto; overflow-y: hidden;
   white-space: nowrap; scrollbar-width: none;
 }
+html.kb.kb-tall .rhyme-panel:not([hidden]) { flex-wrap: wrap; align-content: flex-start; max-height: 4.7rem; overflow-x: hidden; overflow-y: auto; white-space: normal; }
 html.kb .rhyme-panel::-webkit-scrollbar { display: none; }
 html.kb .rhyme-panel > * { flex: none; }
-html.kb .rhyme-group { margin: 0; display: flex; align-items: center; gap: .35rem; }
-html.kb .rhyme-words { flex-wrap: nowrap; }
+html.kb .rhyme-group, html.kb .rhyme-words { display: contents; }
+html.kb .rhyme-group-label { display: inline-block; flex: none; font: 700 .72rem var(--sans); color: var(--ink); margin: 0 .1rem 0 .4rem; }
+html.kb .rhyme-group:first-child .rhyme-group-label { display: none; } /* the header shows it */
+html.kb .rhyme-pill { flex: none; min-height: 2rem; }
 html.kb .rhyme-empty { margin: 0; }
-html.kb .rhyme-group-label, html.kb .rhyme-hint, html.kb .rhyme-more { display: none; }
+html.kb .rhyme-hint, html.kb .rhyme-more { display: none; }
 
 /* e-ink badges are outlined, not filled (placed last so it wins over the inverted-solid rule above). */
 :root[data-tone="eink"] #counts b { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }

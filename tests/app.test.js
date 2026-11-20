@@ -1605,7 +1605,7 @@ test('rhyme panel: the checked word is marked in the mirror layer and the collap
 test('rhymes panel layout: collapsed one-line label, capped height, headerless list, highlight mirror CSS', () => {
   const css = read('css/styles.css'), html = read('index.html'), js = read('js/app.js');
   assert.match(html, /<span id="rhymeLabel">Rhymes<\/span>/); assert.match(html, /<\/textarea>\s*<div id="hl" aria-hidden="true"><\/div>/, 'the mirror follows the text box so it paints over it');
-  assert.match(css, /\.rhyme-panel \{\s*max-height: 9rem;/); assert.equal(/\.rhyme-head|\.rhyme-title/.test(css), false);
+  assert.match(css, /\.rhyme-panel \{\s*max-height: 9rem;/); assert.equal(/\.rhyme-title/.test(css), false);
   assert.match(css, /#ed, #hl \{ grid-area: 1 \/ 2; \}/); assert.match(css, /#hl \{[^}]*pointer-events: none;[^}]*color: transparent;/);
   assert.match(css, /#ed\.wrap ~ #hl \{ white-space: pre-wrap;/);
   assert.match(css, /:root:is\(\[data-tone="hc-bw"\], \[data-tone="terminal"\], \[data-tone="amber"\], \[data-tone="hc-yellow"\], \[data-tone="eink"\]\) #hl mark \{\s*background: var\(--ink\); color: var\(--bg\);/, 'inverted block in the monochrome tones');
@@ -1622,15 +1622,20 @@ test('keyboard layout: html.kb is set from the visual viewport, and CSS turns Rh
   const root = b.document.documentElement;
   assert.equal(root.classList.contains('kb'), false, 'normal height: no compact layout');
   run(380, {offsetTop: 12}); assert.equal(root.classList.contains('kb'), true); assert.equal(root.style['--vvh'], '380px'); assert.equal(root.style['--vvt'], '12px');
-  run(800); assert.equal(root.classList.contains('kb'), false); assert.equal(root.style['--vvh'], undefined, 'variables are removed again');
+  assert.equal(root.classList.contains('kb-tall'), false, '380px visible: one row of chips'); run(430); assert.equal(root.classList.contains('kb-tall'), true, '430px visible: room for two rows'); run(419); assert.equal(root.classList.contains('kb-tall'), false);
+  run(800); assert.equal(root.classList.contains('kb'), false); assert.equal(root.classList.contains('kb-tall'), false); assert.equal(root.style['--vvh'], undefined, 'variables are removed again');
   run(700); assert.equal(root.classList.contains('kb'), false, '100px covered (browser toolbar): not a keyboard');
   run(660); assert.equal(root.classList.contains('kb'), true, 'layout viewport 800 with 660 visible: 140px covered counts as a keyboard');
   run(300, {scale: 2}); assert.equal(root.classList.contains('kb'), false, 'a pinch-zoomed page is not a keyboard');
   const css = read('css/styles.css'), js = read('js/app.js');
   assert.match(css, /html\.kb \.app \{ position: fixed; left: 0; right: 0; top: var\(--vvt, 0px\);[^}]*height: var\(--vvh, 100%\)/);
   assert.match(css, /html\.kb \.sheet \{ min-height: calc\(var\(--lh\) \* 3 \+ var\(--pad\) \* 2\); \}/);
-  assert.match(css, /html\.kb \.rhyme-panel:not\(\[hidden\]\) \{[^}]*flex-wrap: nowrap;[^}]*overflow-x: auto;/);
-  assert.match(css, /html\.kb \.rhyme-group-label, html\.kb \.rhyme-hint, html\.kb \.rhyme-more \{ display: none; \}/);
+  assert.match(css, /html\.kb \.rhyme-panel:not\(\[hidden\]\) \{[^}]*flex-wrap: nowrap;[^}]*overflow-x: auto;/, 'one row of chips that scrolls sideways');
+  assert.match(css, /html\.kb\.kb-tall \.rhyme-panel:not\(\[hidden\]\) \{ flex-wrap: wrap;[^}]*max-height: 4\.7rem;/, 'two rows when there is room');
+  assert.match(css, /html\.kb \.rhyme-dock \{[^}]*flex-direction: column;[^}]*border: 1px solid var\(--edge\);/, 'one bordered card: header line, then chips');
+  assert.match(css, /html\.kb \.rhyme-hint, html\.kb \.rhyme-more \{ display: none; \}/); assert.match(css, /html\.kb \.rhyme-group:first-child \.rhyme-group-label \{ display: none; \}/);
+  assert.match(read('index.html'), /<div class="rhyme-head">[\s\S]*<span id="rhymeGroup" class="rhyme-group-now" aria-hidden="true"><\/span>/, 'decorative group label beside the toggle');
+  assert.match(js, /root\.classList\.toggle\('kb-tall', on && vv\.height >= 420\)/);
   assert.match(js, /vv\.height < 520 \|\| covered > 120/);
 });
 test('README: Safari save wording and offline dictionary download are explained', () => {
