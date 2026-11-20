@@ -12,6 +12,7 @@ require('../js/license.js');
 const read = file => fs.readFileSync(path.join(base, file), 'utf8');
 
 function boot(saved = {}, native = true, opts = {}) {
+  if (!opts.firstRun) saved['syl-welcomed'] = '1'; // most tests are not a first run
   const nodes = {}, elements = [];
   let active = null, download = null, loads = 0;
   const timers = [];
@@ -67,7 +68,7 @@ function boot(saved = {}, native = true, opts = {}) {
     document, console, AppPreferences, SyllableCounter, AppEditor, CMU_LICENSE: globalThis.CMU_LICENSE,
     CMUDictionary: {load(progress) { loads++; return opts.dictLoad ? opts.dictLoad(progress) : new Promise(() => {}); }},
     matchMedia: query => query.includes('900px') ? mq : {matches: false, addEventListener() {}},
-    localStorage: {getItem: k => saved[k] ?? null, setItem: (k, v) => saved[k] = v},
+    localStorage: {getItem: k => saved[k] ?? null, setItem: (k, v) => { if (!opts.readOnlyStorage) saved[k] = v; }, get length() { return Object.keys(saved).length; }, key: i => Object.keys(saved)[i] ?? null},
     setTimeout: (f, ms) => { timers.push({f, ms, done: false}); return timers.length; }, clearTimeout(id) { if (timers[id - 1]) timers[id - 1].done = true; },
     Blob: class {constructor(parts) { download = parts.join(''); }},
     URL: {createObjectURL: () => 'blob:test', revokeObjectURL() {}},
@@ -1713,4 +1714,17 @@ test('rhymes dock: one card with a flat full-width header, unchanged on-screen-k
   assert.match(css, /html:not\(\.kb\) \.rhyme-toggle \{[^}]*width: 100%;[^}]*border: 0;[^}]*background: transparent;[^}]*box-shadow: none;/);
   assert.match(css, /html:not\(\.kb\) \.rhyme-panel \{ border: 0; border-top: 1px solid var\(--rule\);/);
   assert.match(read('index.html'), /<span id="rhymeLabel">Rhymes<\/span>/, 'the label with the word and count is kept');
+});
+
+test('first run: Settings opens once with About expanded; never again, never for returning visitors, never when storage is unwritable', () => {
+  const saved = {}, b = boot(saved, true, {firstRun: true}), n = b.nodes;
+  assert.equal(n.morePanel.getAttribute('open'), ''); assert.equal(n.aboutAcc.getAttribute('open'), ''); assert.equal(n.displayAcc.getAttribute('open'), null, 'Display collapses so About is in view');
+  assert.equal(n.moreBtn.getAttribute('aria-expanded'), 'true'); assert.equal(saved['syl-welcomed'], '1', 'flag saved as soon as it opens');
+  n.moreClose.click(); assert.equal(n.moreBtn.getAttribute('aria-expanded'), 'false');
+  const again = boot(saved, true, {firstRun: true}).nodes; assert.equal(again.morePanel.getAttribute('open'), null, 'second visit: closed'); assert.equal(again.displayAcc.getAttribute('open'), ''); assert.equal(again.aboutAcc.getAttribute('open'), null);
+  const returning = {'syl-tone': 'warm'}, r = boot(returning, true, {firstRun: true}).nodes;
+  assert.equal(r.morePanel.getAttribute('open'), null, 'saved preferences: not a first run'); assert.equal(returning['syl-welcomed'], '1', 'flagged so a later reset cannot trigger it');
+  boot(saved, true).nodes.resetPrefs.click(); assert.equal(saved['syl-welcomed'], '1', 'Reset to defaults leaves the flag alone');
+  assert.equal(boot({}, true, {firstRun: true}).nodes.morePanel.getAttribute('open'), '');
+  assert.equal(boot({}, true, {firstRun: true, readOnlyStorage: true}).nodes.morePanel.getAttribute('open'), null, 'unwritable storage: no auto-open');
 });

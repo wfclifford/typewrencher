@@ -764,7 +764,26 @@
     if (document.fonts.ready) document.fonts.ready.then(remeasure);
     if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', remeasure);
   }
-  if (useDictionary.checked) { welcomeBegin(); loadDictionary(); } else showDictionaryState();
+  // First run only: open Settings once with About expanded (and Display collapsed so About is in view). "First run" means
+  // nothing of ours is saved yet; the flag is saved at once, even for a returning visitor, so this never repeats. It is
+  // not part of the preferences, so Reset to defaults leaves it alone. If storage cannot be written, nothing opens.
+  function firstRun() {
+    try {
+      var s = preferenceStorage;
+      if (!s || typeof s.key !== "function" || s.getItem("syl-welcomed") !== null) return false;
+      var saved = false;
+      for (var i = 0; i < s.length; i++) { var k = s.key(i); if (k && k.indexOf("syl-") === 0) saved = true; }
+      s.setItem("syl-welcomed", "1");
+      return !saved && s.getItem("syl-welcomed") === "1";
+    } catch (_) { return false; }
+  }
+  var welcomed = firstRun();
+  if (welcomed) {
+    document.getElementById('displayAcc').removeAttribute('open');
+    document.getElementById('aboutAcc').setAttribute('open', '');
+    AppDialogs.drawer.open();
+  }
+  if (useDictionary.checked) { if (!welcomed) welcomeBegin(); loadDictionary(); } else showDictionaryState();
   // Offline support: the worker saves the app's files so it opens with no connection after one visit.
   if (typeof navigator !== 'undefined' && navigator.serviceWorker && typeof location !== 'undefined' &&
       (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
