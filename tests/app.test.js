@@ -83,9 +83,9 @@ function boot(saved = {}, native = true, opts = {}) {
 
 test('requested first-run defaults', () => {
   const b = boot(), n = b.nodes, root = b.document.documentElement;
-  assert.equal(root.getAttribute('data-tone'), 'grey');
-  assert.equal(root.getAttribute('data-theme'), null);
-  assert.equal(root.getAttribute('data-font'), null);
+  assert.equal(root.getAttribute('data-tone'), 'terminal');
+  assert.equal(root.getAttribute('data-theme'), 'dark');
+  assert.equal(root.getAttribute('data-font'), 'mono');
   assert.equal(root.style['--scale'], '1');
   assert.equal(n.wrapToggle.checked, true);
   for (const id of ['exportCounts', 'exportTotals']) assert.equal(n[id].checked, false, id + ' is off by default');
@@ -101,7 +101,7 @@ test('saved preferences override defaults', () => {
 });
 test('invalid settings use defaults', () => {
   const b = boot({'syl-tone':'invalid','syl-textsize':'99'});
-  assert.equal(b.document.documentElement.getAttribute('data-tone'), 'grey');
+  assert.equal(b.document.documentElement.getAttribute('data-tone'), 'terminal');
   assert.equal(b.document.documentElement.style['--scale'], '1');
 });
 test('default text size is still scale 1, now the third of seven sizes', () => {
@@ -194,7 +194,7 @@ test('license display drops hard line breaks but keeps paragraphs and wording', 
 });
 test('blocked preference storage uses defaults', () => {
   const p = AppPreferences.create({getItem() {throw Error('blocked');}});
-  assert.equal(p.get('syl-tone'), 'grey'); assert.equal(p.get('syl-counts'), 'off');
+  assert.equal(p.get('syl-tone'), 'terminal'); assert.equal(p.get('syl-theme'), 'dark'); assert.equal(p.get('syl-font'), 'mono'); assert.equal(p.get('syl-counts'), 'off');
 });
 test('lookup and cache invalidation', () => {
   const c = SyllableCounter.create(); c.setDictionary({hello:[2], fire:[1,2]});
@@ -276,10 +276,10 @@ test('text size shows its level and stays within range', () => {
   n.sizeDown.click(); assert.equal(n.sizeLevel.textContent, '6 of 7'); assert.equal(n.sizeDots.getAttribute('data-level'), '6');
 });
 test('reset restores every default and says so', () => {
-  const saved = {'syl-tone': 'terminal', 'syl-theme': 'dark', 'syl-font': 'mono', 'syl-textsize': '1', 'syl-wrap': 'off', 'syl-counts': 'off', 'syl-totals': 'off', 'syl-cmudict-enabled': 'off'};
+  const saved = {'syl-tone': 'grey', 'syl-theme': 'light', 'syl-font': 'serif', 'syl-textsize': '1', 'syl-wrap': 'off', 'syl-counts': 'off', 'syl-totals': 'off', 'syl-cmudict-enabled': 'off'};
   const b = boot(saved), n = b.nodes, root = b.document.documentElement;
   n.resetPrefs.click();
-  assert.equal(root.getAttribute('data-tone'), 'grey'); assert.equal(root.getAttribute('data-theme'), null); assert.equal(root.getAttribute('data-font'), null);
+  assert.equal(root.getAttribute('data-tone'), 'terminal'); assert.equal(root.getAttribute('data-theme'), 'dark'); assert.equal(root.getAttribute('data-font'), 'mono');
   assert.equal(root.style['--scale'], '1'); assert.equal(n.sizeLevel.textContent, '3 of 7');
   for (const id of ['wrapToggle', 'useCMUdict']) assert.equal(n[id].checked, true, id);
   for (const id of ['exportCounts', 'exportTotals']) assert.equal(n[id].checked, false, id);
@@ -380,7 +380,7 @@ test('there are seven text sizes, 0.7 to 1.75, and the default is still scale 1'
 // ---- high contrast tones
 test('hc-bw and amber tones are valid, selectable, and follow the light/dark/system theme', () => {
   const prefs = tone => AppPreferences.create({getItem: () => tone}).get('syl-tone');
-  assert.equal(prefs('hc-bw'), 'hc-bw'); assert.equal(prefs('amber'), 'amber'); assert.equal(prefs('hc-color'), 'grey', 'the removed tone falls back to the default'); assert.equal(prefs('high'), 'grey');
+  assert.equal(prefs('hc-bw'), 'hc-bw'); assert.equal(prefs('amber'), 'amber'); assert.equal(prefs('hc-color'), 'terminal', 'the removed tone falls back to the default'); assert.equal(prefs('high'), 'terminal');
   for (const tone of ['hc-bw', 'amber']) {
     const b = boot({'syl-tone': tone}); assert.equal(b.document.documentElement.getAttribute('data-tone'), tone);
     const pressed = Object.fromEntries(b.document.querySelectorAll('[data-tone-choice]').map(e => [e.getAttribute('data-tone-choice'), e.getAttribute('aria-pressed')]));
@@ -1482,7 +1482,7 @@ test('manifest and icons: installable name, standalone display, real icon files 
   const html = read('index.html');
   assert.match(html, /<link rel="manifest" href="manifest\.webmanifest">/); assert.match(html, /<link rel="apple-touch-icon" href="icons\/apple-touch-icon\.png">/);
   assert.match(html, /<link rel="icon" href="icons\/icon\.svg" type="image\/svg\+xml">/); assert.match(html, /<meta name="apple-mobile-web-app-title" content="Word Hammer">/);
-  assert.match(html, /<meta name="theme-color" content="#1d2a2e">/);
+  assert.match(html, /<meta name="theme-color" content="#020502">/);
 });
 test('offline: the app registers the service worker on https or localhost only, and the page works if it cannot', () => {
   assert.match(read('js/app.js'), /navigator\.serviceWorker\.register\('sw\.js'\)\.catch\(\(\) => \{\}\)/);

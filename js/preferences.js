@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const defaults = Object.freeze({
-    'syl-tone': 'grey', 'syl-theme': 'system', 'syl-font': 'serif',
+    'syl-tone': 'terminal', 'syl-theme': 'dark', 'syl-font': 'mono',
     'syl-textsize': '2', 'syl-wrap': 'on', 'syl-counts': 'off',
     'syl-totals': 'off', 'syl-cmudict-enabled': 'on', 'syl-supplement': 'on', 'syl-rhymes': 'off',
     'syl-rhymes-open': 'on', 'syl-rhymes-type': 'perfect', 'syl-rhymes-include-rich': 'off'
