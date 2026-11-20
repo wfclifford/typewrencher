@@ -104,7 +104,9 @@
   var clearBtn = document.getElementById("clearBtn");
   var fname = document.getElementById("fname");
   var savebox = document.getElementById("savebox");
-  var downloads = null, resetTimer = null;
+  // Inside the Mac app's web view (see js/host.js) the native side owns files and saving; in a browser host is null.
+  var host = typeof AppHost !== "undefined" ? AppHost.create(window, { setTimeout: setTimeout, clearTimeout: clearTimeout }) : null;
+  var downloads = host ? host.downloads : null, resetTimer = null;
 
   function flash(label) {
     saveLabel.textContent = label;
@@ -211,13 +213,14 @@
     var files = e.dataTransfer && e.dataTransfer.files;
     if (!files || !files.length) return; // plain text drops keep their normal behavior
     e.preventDefault();
+    if (host) { say("Use File > Open to open a file."); return; } // the native side opens files
     openText(files[0]);
   });
 
-  savebox.hidden = false;
+  savebox.hidden = Boolean(host); // the native menus open and save files
   syncSave();
 
-  ed.addEventListener("input", function () { render(); syncSave(); });
+  ed.addEventListener("input", function () { render(); syncSave(); if (host) host.textChanged(ed.value); });
   ed.addEventListener("scroll", function () { gutter.scrollTop = ed.scrollTop; });
   var root = document.documentElement;
   var sysTheme = root.getAttribute("data-theme");
@@ -403,6 +406,7 @@
     render();
     syncSave();
     if (rhymeCtl) rhymeCtl.refresh();
+    if (host) host.textChanged(ed.value); // the fallback clear sets the value without an input event
   }
   clearBtn.addEventListener("click", function () {
     if (!ed.value && !fname.value) { say("Nothing to erase."); return; }
@@ -424,6 +428,34 @@
 
   render();
   ed.focus();
+
+  // The native side drives the page through this object (protocol in js/host.js).
+  if (host) {
+    window.TypewrencherHost = {
+      protocol: host.protocol,
+      getText: function () { return ed.value; },
+      exportText: exportText,
+      setDocument: function (doc) {
+        var text = String((doc && doc.text) || "").replace(/\r\n?/g, "\n"); // same line endings as Open
+        host.cancel(); // text the native side is replacing must not be sent back
+        fname.value = String((doc && doc.name) || "").replace(/\.txt$/i, "");
+        if (text !== ed.value) {
+          var start = ed.selectionStart, end = ed.selectionEnd, top = ed.scrollTop;
+          ed.value = text;
+          if (typeof start === "number" && typeof ed.setSelectionRange === "function") {
+            try { ed.setSelectionRange(Math.min(start, text.length), Math.min(end, text.length)); } catch (_) {}
+          }
+          ed.scrollTop = top;
+          render();
+          if (rhymeCtl) rhymeCtl.refresh();
+        }
+        syncSave();
+      }
+    };
+    ed.addEventListener("blur", host.flush);
+    window.addEventListener("pagehide", host.flush);
+    host.post({ type: "ready", protocol: host.protocol });
+  }
 
   const useDictionary = document.getElementById('useCMUdict');
   const useSupplement = document.getElementById('useSupplement');
@@ -808,7 +840,7 @@
   }
   if (useDictionary.checked) { if (!welcomed) welcomeBegin(); loadDictionary(); } else showDictionaryState();
   // Offline support: the worker saves the app's files so it opens with no connection after one visit.
-  if (typeof navigator !== 'undefined' && navigator.serviceWorker && typeof location !== 'undefined' &&
+  if (!host && typeof navigator !== 'undefined' && navigator.serviceWorker && typeof location !== 'undefined' &&
       (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
   }
