@@ -1436,10 +1436,36 @@ test('Include rich rhymes: off by default means strict (rich rhymes hidden); on 
   assert.equal(on.calls.attach[0].strict, false); assert.equal(on.b.nodes.rhymeRich.checked, true);
 });
 
-test('erase confirmation is a solid bright red with white text; the download says Exporting, not Saved', () => {
+test('erase confirmation is a solid bright red with white text; saving says Done on every path, never Saved, Shared or Exporting', () => {
   const css = read('css/styles.css'), js = read('js/app.js');
   assert.match(css, /\.clear\.armed \{ color: #fff; border-color: #e00000; background: #e00000;/);
-  assert.equal(/flash\("Saved"\)/.test(js), false); assert.equal((js.match(/flash\("Exporting"\)/g) || []).length, 2);
+  for (const old of ['Saved', 'Shared', 'Exporting']) assert.equal(js.includes('flash("' + old + '")'), false, old);
+  assert.equal((js.match(/flash\("Done", "Done " \+ fileName\(\)\)/g) || []).length, 3, 'download, share sheet and native save');
+});
+test('Done: the download button shows Done, the status line says "Done <file>.txt", and the label returns to .txt', () => {
+  const b = boot(), n = b.nodes; n.ed.value = 'cat'; n.ed.emit('input'); n.fname.value = 'My Poem';
+  n.save.click(); b.flush(60);
+  assert.equal(n.saveLabel.textContent, 'Done'); assert.equal(n.status.textContent, 'Done My Poem.txt');
+  assert.equal(n.save.getAttribute('aria-label'), 'Done My Poem.txt');
+  b.flush(2500); assert.equal(n.saveLabel.textContent, '.txt'); assert.equal(n.save.getAttribute('aria-label'), 'Save as .txt');
+  n.fname.value = ''; n.save.click(); b.flush(60); assert.equal(n.status.textContent, 'Done title.txt', 'the default name is reported too');
+});
+test('Done: the iPhone and iPad share sheet says Done too, and dismissing the sheet says nothing', async () => {
+  const shared = [], make = share => boot({}, true, {globals: {
+    navigator: {userAgent: 'iPhone', platform: 'iPhone', maxTouchPoints: 5, share, canShare: () => true},
+    File: class {constructor(parts, name) { this.name = name; this.parts = parts; }}}});
+  const ok = make(data => { shared.push(data.files[0].name); return Promise.resolve(); }), n = ok.nodes;
+  n.ed.value = 'cat'; n.ed.emit('input'); n.fname.value = 'Song'; n.save.click(); await Promise.resolve(); await Promise.resolve(); ok.flush(60);
+  assert.deepEqual(shared, ['Song.txt']); assert.equal(n.saveLabel.textContent, 'Done'); assert.equal(n.status.textContent, 'Done Song.txt');
+  const abort = make(() => Promise.reject(Object.assign(new Error('x'), {name: 'AbortError'}))), m = abort.nodes;
+  m.ed.value = 'cat'; m.ed.emit('input'); m.save.click(); await Promise.resolve(); await Promise.resolve(); abort.flush(60);
+  assert.notEqual(m.saveLabel.textContent, 'Done'); assert.equal(m.status.textContent, '');
+});
+test('Done: a native save through the host says Done, and a failed one still says it could not save', async () => {
+  const ok = bootHost(), n = ok.nodes; n.ed.value = 'cat'; n.ed.emit('input'); n.fname.value = 'A'; n.save.click();
+  await new Promise(r => setImmediate(r)); ok.flush(60); assert.equal(n.saveLabel.textContent, 'Done'); assert.equal(n.status.textContent, 'Done A.txt');
+  const bad = bootHost({}, {reply: m => m.type === 'export' ? Promise.reject(new Error('disk full')) : Promise.resolve()}), m = bad.nodes; m.ed.value = 'cat'; m.ed.emit('input'); m.save.click();
+  await new Promise(r => setImmediate(r)); bad.flush(60); assert.equal(m.saveLabel.textContent, 'Couldn\u2019t save');
 });
 
 // ---- Count/line alignment: one whole-pixel line height, rows snapped to whole text lines

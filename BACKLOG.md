@@ -6,8 +6,6 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Ready
 
-- **"Done" success label.** Change the `.txt` button label to "Done" on both paths, replacing "Shared" (iOS share sheet) and "Exporting" (downloads). The status line can carry more detail, such as "Done title.txt". Update tests.
-
 ## Idea
 
 - **Autism-friendly improvements.** Documented in the Docs artifact "Autism-friendly improvements for Typewrencher".
@@ -21,6 +19,7 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Done
 
+- "Done" success label: the `.txt` button reads "Done" on downloads, the iOS share sheet and native saves; the status line and accessible name say "Done title.txt".
 - Version in About: last line of About shows `Version 0.1.N · build <id>`. The build id changes with every code change (`tools/stamp.js`); the release number counts merges on `main` that changed a site file and is set only in the deployed copy (`tools/build-site.js --release`). Local and pull request builds show `dev`.
 - Content Security Policy, block cursor (retro_term, retro_amber), per-line cache, e-ink tone, high-contrast yellow tone.
 - New defaults: retro_term, Dark, Mono.
