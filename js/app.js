@@ -111,10 +111,11 @@
   var host = typeof AppHost !== "undefined" ? AppHost.create(window, { setTimeout: setTimeout, clearTimeout: clearTimeout }) : null;
   var downloads = host ? host.downloads : null, resetTimer = null;
 
-  function flash(label) {
+  // The button shows the short label; the status line and the button's accessible name carry the detail, such as "Done title.txt".
+  function flash(label, detail) {
     saveLabel.textContent = label;
-    say(label);
-    saveBtn.setAttribute("aria-label", label);
+    say(detail || label);
+    saveBtn.setAttribute("aria-label", detail || label);
     clearTimeout(resetTimer);
     resetTimer = setTimeout(function () { saveLabel.textContent = ".txt"; saveBtn.setAttribute("aria-label", "Save as .txt"); }, 2500);
   }
@@ -143,7 +144,7 @@
     a.click();
     a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-    flash("Exporting");
+    flash("Done", "Done " + fileName());
   }
 
   // iPhone and iPad: the share sheet offers Save to Files (including iCloud Drive) in one tap.
@@ -165,7 +166,7 @@
     if (!ed.value) { say("Nothing to save yet."); return; }
     var sharing = downloads ? null : shareFile();
     if (sharing) {
-      sharing.then(function () { flash("Shared"); }).catch(function (e) {
+      sharing.then(function () { flash("Done", "Done " + fileName()); }).catch(function (e) {
         if (e && e.name === "AbortError") return; // the sheet was dismissed
         localSave();
       });
@@ -173,7 +174,7 @@
     }
     if (!downloads) { localSave(); return; }
     downloads.save({ filename: fileName(), data: exportText() }).then(function () {
-      flash("Exporting");
+      flash("Done", "Done " + fileName());
     }).catch(function (e) {
       if (e && e.code === "declined") return;
       flash("Couldn\u2019t save");

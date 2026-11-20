@@ -17,8 +17,8 @@
 'use strict';
 
 // BEGIN GENERATED
-const VERSION = '8711d5c019';
-const CORE = ["index.html","css/styles.css?v=c4e0d24316","js/license.js?v=874a19f480","js/version.js?v=69a0f01c3b","js/preferences.js?v=089560d5dc","js/counter.js?v=12a5bf54da","js/rhymes.js?v=923679a75b","js/mirror.js?v=302da1e7fd","js/rhymes-ui.js?v=2453d3dfd2","js/dictionary.js?v=96c3c5f5fe","js/host.js?v=bfe525872b","js/editor.js?v=12d01ab137","js/dialogs.js?v=6e6803ddbf","js/app.js?v=b902bcafd5","manifest.webmanifest","icons/icon.svg","icons/icon-192.png","icons/icon-512.png","icons/icon-maskable-512.png","icons/apple-touch-icon.png"];
+const VERSION = '8782e35c34';
+const CORE = ["index.html","css/styles.css?v=c4e0d24316","js/license.js?v=874a19f480","js/version.js?v=a7a8f1bbf1","js/preferences.js?v=089560d5dc","js/counter.js?v=12a5bf54da","js/rhymes.js?v=923679a75b","js/mirror.js?v=302da1e7fd","js/rhymes-ui.js?v=2453d3dfd2","js/dictionary.js?v=96c3c5f5fe","js/host.js?v=bfe525872b","js/editor.js?v=12d01ab137","js/dialogs.js?v=6e6803ddbf","js/app.js?v=a2209260ea","manifest.webmanifest","icons/icon.svg","icons/icon-192.png","icons/icon-512.png","icons/icon-maskable-512.png","icons/apple-touch-icon.png"];
 const OPTIONAL = ["data/cmudict.json","data/cmudict.counts.txt.gz","data/variable-words.txt","data/CMUdict-LICENSE.txt"];
 // END GENERATED
 
