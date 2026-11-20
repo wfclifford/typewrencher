@@ -1,6 +1,7 @@
 import SwiftUI
 import WebKit
 import AppKit
+import UniformTypeIdentifiers
 
 // Hosts the web app and speaks bridge protocol 1 (js/host.js).
 //   page -> native: ready, textChanged, export   (message handler "typewrencher", replies allowed)
