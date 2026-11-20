@@ -1,0 +1,50 @@
+# Word Hammer. Dedicated to the public domain under CC0 1.0 (see LICENSE).
+# Runs the tests and the stamp check on every push and pull request to main; on main, publishes the site to GitHub Pages.
+# One-time setup: repository Settings > Pages > Source: "GitHub Actions".
+name: Test and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Stamp check (fails if ?v= hashes or the offline list in sw.js are stale; fix with: node tools/stamp.js)
+        run: node tools/stamp.js --check
+      - name: Tests
+        run: node tests/app.test.js
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

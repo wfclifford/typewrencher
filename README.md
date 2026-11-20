@@ -57,7 +57,7 @@ node tools/stamp.js         # after ANY change: stamps ?v= hashes and rewrites t
 node tools/stamp.js --check # fails if the stamps are stale (use in CI)
 ```
 
-Always run `node tools/stamp.js` before publishing. It keeps browsers and the offline cache from serving stale files.
+Always run `node tools/stamp.js` before publishing. A GitHub Actions workflow (`.github/workflows/pages.yml`) runs the stamp check and the tests on every push and pull request, and publishes to GitHub Pages from `main` (set Settings, Pages, Source to “GitHub Actions”). It keeps browsers and the offline cache from serving stale files.
 
 ### Data
 
