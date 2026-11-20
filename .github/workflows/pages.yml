@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Stamp check (fails if ?v= hashes or the offline list in sw.js are stale; fix with: node tools/stamp.js)
+      - name: Stamp check (fix stale stamps by running tools/stamp.js)
         run: node tools/stamp.js --check
       - name: Tests
         run: node tests/app.test.js
