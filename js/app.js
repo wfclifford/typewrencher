@@ -221,7 +221,8 @@
     openText(files[0]);
   });
 
-  savebox.hidden = Boolean(host); // the native menus open and save files
+  savebox.hidden = false;         // the filename field and .txt export work in a browser and in the Mac app
+  openBtn.hidden = Boolean(host); // in the Mac app, File > Open opens files
   syncSave();
 
   ed.addEventListener("input", function () { render(); syncSave(); if (host) host.textChanged(ed.value); });
