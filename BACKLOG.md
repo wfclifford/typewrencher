@@ -7,7 +7,6 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 ## Ready
 
 - **"Done" success label.** Change the `.txt` button label to "Done" on both paths, replacing "Shared" (iOS share sheet) and "Exporting" (downloads). The status line can carry more detail, such as "Done title.txt". Update tests.
-- **Version in About.** Show a release number and a build id on the last line of the About section, for example `Version 0.1.12 · build 5af3c9d1`. The release number changes only when a merge to `main` changes a file of the website; the build id changes with every code change, so a copy that is between releases still shows exactly which code it has. Both are automatic, with nothing to bump or click. The build id is the short content hash `tools/stamp.js` already computes for `sw.js`. The release number is `0.1.N`, where N is the number of merges on `main` that touched the site's files (`git rev-list --first-parent --count` limited to the `SITE_FILES` list in `tools/build-site.js`, so there is one list). The deploy job needs the full history (`fetch-depth: 0`). `tools/build-site.js` writes the number into the built site, so nothing is committed to bump it; pull request builds and local copies show `dev`. The injected file must be stamped like the other scripts so offline copies update. A test confirms About shows the injected values. Use the same line in the Mac app later.
 
 ## Idea
 
@@ -22,6 +21,7 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Done
 
+- Version in About: last line of About shows `Version 0.1.N · build <id>`. The build id changes with every code change (`tools/stamp.js`); the release number counts merges on `main` that changed a site file and is set only in the deployed copy (`tools/build-site.js --release`). Local and pull request builds show `dev`.
 - Content Security Policy, block cursor (retro_term, retro_amber), per-line cache, e-ink tone, high-contrast yellow tone.
 - New defaults: retro_term, Dark, Mono.
 - First-run welcome (drawer open, About expanded).

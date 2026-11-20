@@ -2,6 +2,9 @@
 (function () {
   'use strict';
   const counter = SyllableCounter.create();
+  // Last line of About: the release number (set when the site is built) and the build id (changes with every code change).
+  var versionLine = document.getElementById("versionLine");
+  if (versionLine && typeof AppVersion !== "undefined") versionLine.textContent = "Version " + AppVersion.release + " \u00b7 build " + AppVersion.build;
   const lineSyl = text => counter.line(text);
   let preferenceStorage = null;
   try { preferenceStorage = localStorage; } catch (_) {}

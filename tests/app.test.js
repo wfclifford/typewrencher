@@ -10,6 +10,7 @@ require('../js/counter.js');
 require('../js/editor.js');
 require('../js/host.js');
 require('../js/license.js');
+require('../js/version.js');
 const read = file => fs.readFileSync(path.join(base, file), 'utf8');
 
 function boot(saved = {}, native = true, opts = {}) {
@@ -66,7 +67,7 @@ function boot(saved = {}, native = true, opts = {}) {
     nodes[id].close = () => { nodes[id].removeAttribute('open'); nodes[id].emit('close'); };
   }
   const context = {
-    document, console, AppPreferences, SyllableCounter, AppEditor, AppHost, CMU_LICENSE: globalThis.CMU_LICENSE,
+    document, console, AppPreferences, SyllableCounter, AppEditor, AppHost, AppVersion: globalThis.AppVersion, CMU_LICENSE: globalThis.CMU_LICENSE,
     CMUDictionary: {load(progress) { loads++; return opts.dictLoad ? opts.dictLoad(progress) : new Promise(() => {}); }},
     matchMedia: query => query.includes('900px') ? mq : {matches: false, addEventListener() {}},
     localStorage: {getItem: k => saved[k] ?? null, setItem: (k, v) => { if (!opts.readOnlyStorage) saved[k] = v; }, get length() { return Object.keys(saved).length; }, key: i => Object.keys(saved)[i] ?? null},
@@ -818,15 +819,16 @@ test('every css/js reference in index.html carries a current content version (ru
 });
 test('stamp tool: an edited file is reported stale, restamping fixes only that file, and the check never writes', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stamp-'));
-  for (const f of ['index.html', 'css/styles.css', 'js/app.js', 'js/license.js', 'js/preferences.js', 'js/counter.js', 'js/rhymes.js', 'js/rhymes-ui.js', 'js/mirror.js', 'js/dictionary.js', 'js/host.js', 'js/editor.js', 'js/dialogs.js', 'tools/stamp.js']) {
+  for (const f of ['index.html', 'css/styles.css', 'js/app.js', 'js/license.js', 'js/preferences.js', 'js/counter.js', 'js/rhymes.js', 'js/rhymes-ui.js', 'js/mirror.js', 'js/dictionary.js', 'js/host.js', 'js/version.js', 'js/editor.js', 'js/dialogs.js', 'tools/stamp.js']) {
     fs.mkdirSync(path.dirname(path.join(dir, f)), {recursive: true}); fs.copyFileSync(path.join(base, f), path.join(dir, f));
   }
+  await runStamp(dir); // this copy holds fewer files than the site, so its build id differs from the repository's
   assert.equal((await runStamp(dir, '--check')).code, 0);
   const before = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
   fs.appendFileSync(path.join(dir, 'js/app.js'), '\n// edit\n');
   const stale = await runStamp(dir, '--check'); assert.equal(stale.code, 1); assert.match(stale.stderr, /js\/app\.js/); assert.doesNotMatch(stale.stderr, /counter\.js/);
   assert.equal(fs.readFileSync(path.join(dir, 'index.html'), 'utf8'), before, 'check does not write');
-  assert.match((await runStamp(dir)).stdout, /Updated 1 of 12 references: js\/app\.js/);
+  assert.match((await runStamp(dir)).stdout, /Updated 2 of 13 references: js\/version\.js, js\/app\.js/, 'app.js, and version.js because the build id changed');
   const after = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
   assert.notEqual(after, before); assert.equal((await runStamp(dir, '--check')).code, 0);
   assert.equal(after.replace(/js\/app\.js\?v=[a-f0-9]+/, '').length, before.replace(/js\/app\.js\?v=[a-f0-9]+/, '').length, 'only app.js changed');
@@ -1832,4 +1834,62 @@ test('host: the offline worker is not registered inside the Mac app', () => {
 test('host.js is in the page and its stamp is current', () => {
   assert.match(read('index.html'), /<script defer src="js\/host\.js\?v=[a-f0-9]{10}"><\/script>/);
   assert.ok(read('index.html').indexOf('js/host.js') < read('index.html').indexOf('js/app.js'), 'host.js loads before app.js');
+});
+
+// ---- Version line in About: release number (set at build time) and build id (changes with every code change)
+const { execFileSync } = require('node:child_process');
+const siteBuild = (dir, ...args) => execFileSync(process.execPath, [path.join(base, 'tools', 'build-site.js'), dir, ...args], {encoding: 'utf8'});
+test('About ends with the version line: "Version dev" in the repo, with the build id from version.js', () => {
+  const n = boot().nodes, line = n.versionLine.textContent;
+  assert.match(line, /^Version dev \u00b7 build [a-f0-9]{10}$/);
+  assert.equal(line, 'Version ' + AppVersion.release + ' \u00b7 build ' + AppVersion.build);
+  const html = read('index.html'), about = html.slice(html.indexOf('id="aboutAcc"'), html.indexOf('</details>', html.indexOf('id="aboutAcc"')));
+  assert.ok(about.indexOf('id="versionLine"') > about.indexOf('TYPEWRENCHER'), 'the version is the last line of About');
+  assert.ok(about.trimEnd().endsWith('</p>\n      </div>') || about.indexOf('id="versionLine"') > about.lastIndexOf('<strong>'), 'nothing follows it but the closing tags');
+});
+test('the build id in version.js is the offline cache version in sw.js, and version.js loads before app.js', () => {
+  const sw = /const VERSION = '([a-f0-9]{10})'/.exec(read('sw.js'))[1];
+  assert.equal(AppVersion.build, sw);
+  assert.match(read('js/version.js'), /build: "[a-f0-9]{10}"/);
+  const html = read('index.html'); assert.ok(html.indexOf('js/version.js') > 0 && html.indexOf('js/version.js') < html.indexOf('js/app.js'));
+});
+test('editing a site file changes the build id; editing only version.js does not', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'build-id-'));
+  execFileSync(process.execPath, [path.join(base, 'tools', 'build-site.js'), dir]);
+  const id = () => /build: "([a-f0-9]+)"/.exec(fs.readFileSync(path.join(dir, 'js/version.js'), 'utf8'))[1];
+  const run = () => execFileSync(process.execPath, [path.join(base, 'tools', 'stamp.js'), '--root', dir], {encoding: 'utf8'});
+  const first = id(); run(); assert.equal(id(), first, 'restamping an unchanged copy changes nothing');
+  fs.writeFileSync(path.join(dir, 'js/version.js'), fs.readFileSync(path.join(dir, 'js/version.js'), 'utf8').replace('release: "dev"', 'release: "9.9.9"')); run();
+  assert.equal(id(), first, 'the release number is not part of the build id');
+  fs.appendFileSync(path.join(dir, 'js/app.js'), '\n// edit\n'); run();
+  assert.notEqual(id(), first, 'any other site file is');
+});
+test('build-site --release=X puts X in the built copy and keeps its stamps and offline list current', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'site-rel-'));
+  assert.match(siteBuild(dir, '--release=0.1.7'), /release 0.1.7/);
+  const v = fs.readFileSync(path.join(dir, 'js/version.js'), 'utf8');
+  assert.match(v, /release: "0\.1\.7", build: "[a-f0-9]{10}"/);
+  const stamp = /js\/version\.js\?v=([a-f0-9]{10})/.exec(fs.readFileSync(path.join(dir, 'index.html'), 'utf8'))[1];
+  assert.equal(stamp, require('node:crypto').createHash('sha256').update(v).digest('hex').slice(0, 10), 'index.html names the built file');
+  assert.ok(fs.readFileSync(path.join(dir, 'sw.js'), 'utf8').includes('js/version.js?v=' + stamp), 'the offline list names it too');
+  assert.match(fs.readFileSync(path.join(base, 'js/version.js'), 'utf8'), /release: "dev"/, 'the repository copy is untouched');
+  assert.match(siteBuild(fs.mkdtempSync(path.join(os.tmpdir(), 'site-dev-'))), /release dev/);
+  assert.throws(() => execFileSync(process.execPath, [path.join(base, 'tools', 'build-site.js'), dir, '--release=bad value'], {stdio: 'pipe'}), /usable release number/);
+});
+test('release number counts merges on main that changed a site file, and needs full history', () => {
+  const {releaseNumber} = require('../tools/build-site.js');
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'rel-'));
+  const git = (...a) => execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@example.com', ...a], {encoding: 'utf8'});
+  const commit = (file, text, msg) => { fs.writeFileSync(path.join(repo, file), text); git('add', '.'); git('commit', '-q', '-m', msg); };
+  git('init', '-q', '-b', 'main');
+  assert.throws(() => releaseNumber(repo, ['index.html']), /no commit changed a site file|Cannot count/, 'no history yet');
+  commit('index.html', 'a', 'site 1'); commit('notes.md', 'a', 'notes only'); commit('index.html', 'b', 'site 2');
+  git('checkout', '-q', '-b', 'feature'); commit('notes.md', 'b', 'branch notes'); commit('index.html', 'c', 'branch site');
+  git('checkout', '-q', 'main'); git('merge', '--no-ff', '-q', '-m', 'Merge feature', 'feature');
+  git('checkout', '-q', '-b', 'docs'); commit('notes.md', 'c', 'docs'); git('checkout', '-q', 'main'); git('merge', '--no-ff', '-q', '-m', 'Merge docs', 'docs');
+  assert.equal(releaseNumber(repo, ['index.html']), '0.1.3', 'site 1, site 2 and the feature merge count; notes-only commits and the docs merge do not');
+  const shallow = fs.mkdtempSync(path.join(os.tmpdir(), 'rel-shallow-'));
+  execFileSync('git', ['clone', '-q', '--depth=1', 'file://' + repo, shallow]);
+  assert.throws(() => releaseNumber(shallow, ['index.html']), /shallow/);
+  assert.throws(() => releaseNumber(fs.mkdtempSync(path.join(os.tmpdir(), 'rel-none-')), ['index.html']), /Cannot count releases/);
 });
