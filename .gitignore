@@ -1,1 +1,7 @@
 _site/
+
+mac/Typewrencher/site/
+*.xcuserstate
+xcuserdata/
+.build/
+DerivedData/
