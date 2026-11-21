@@ -11,6 +11,8 @@
 //     { type: 'ready', protocol: 1 }               the page has started and TypewrencherHost exists
 //     { type: 'textChanged', text }                the text changed; sent about 300 ms after typing stops
 //     { type: 'export', filename, data }           the page asks the native side to save a .txt file
+//     { type: 'open' }                             the page's Open button: show the native Open panel
+//     { type: 'close' }                            the skull: close this document (the native side saves it first)
 //   native -> page, by calling window.TypewrencherHost (defined in js/app.js)
 //     setDocument({ text, name })                  show this text and name; does not send textChanged back
 //     getText()                                    the current text

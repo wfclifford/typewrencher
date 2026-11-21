@@ -129,7 +129,7 @@
   function syncSave() {
     var empty = ed.value.length === 0;
     saveBtn.setAttribute("aria-disabled", String(empty));
-    clearBtn.setAttribute("aria-disabled", String(empty && !fname.value));
+    clearBtn.setAttribute("aria-disabled", String(!host && empty && !fname.value)); // in the Mac app any document can be closed
   }
 
   fname.addEventListener("input", syncSave);
@@ -204,7 +204,12 @@
       say("Opened " + (file.name || "file") + ".");
     }).catch(function () { say("Couldn\u2019t read that file."); });
   }
-  openBtn.addEventListener("click", function () { openFile.click(); });
+  // In the Mac app the button shows the native Open panel; the document opens through the native side.
+  if (host) openBtn.setAttribute("aria-label", "Open a document");
+  openBtn.addEventListener("click", function () {
+    if (host) { host.post({ type: "open" }); return; }
+    openFile.click();
+  });
   openFile.addEventListener("change", function () {
     var file = openFile.files && openFile.files[0];
     openFile.value = "";
@@ -221,8 +226,7 @@
     openText(files[0]);
   });
 
-  savebox.hidden = false;         // the filename field and .txt export work in a browser and in the Mac app
-  openBtn.hidden = Boolean(host); // in the Mac app, File > Open opens files
+  savebox.hidden = false; // the filename field and .txt export work in a browser and in the Mac app
   syncSave();
 
   ed.addEventListener("input", function () { render(); syncSave(); if (host) host.textChanged(ed.value); });
@@ -400,12 +404,14 @@
 
   var clearLabel = document.getElementById("clearLabel");
   var clearTimer = null;
+  var clearName = host ? "Close document" : "Erase text and filename";
   function disarm() {
     clearTimeout(clearTimer);
     clearBtn.classList.remove("armed");
     clearLabel.textContent = "";
-    clearBtn.setAttribute("aria-label", "Erase text and filename");
+    clearBtn.setAttribute("aria-label", clearName);
   }
+  if (host) clearBtn.setAttribute("aria-label", clearName);
   function clearAll() {
     AppEditor.clear(ed, fname, document);
     render();
@@ -414,6 +420,9 @@
     if (host) host.textChanged(ed.value); // the fallback clear sets the value without an input event
   }
   clearBtn.addEventListener("click", function () {
+    // In the Mac app the skull closes the document instead of erasing it. Unsent text goes first
+    // so the native side saves the newest version.
+    if (host) { host.flush(); host.post({ type: "close" }); return; }
     if (!ed.value && !fname.value) { say("Nothing to erase."); return; }
     if (!clearBtn.classList.contains("armed")) {
       clearBtn.classList.add("armed");

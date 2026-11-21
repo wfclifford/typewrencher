@@ -24,7 +24,10 @@ panel for the page's .txt button); the page stays the editor.
 
 ## Notes
 
-- Inside the app the page hides its own Open button (File > Open does that); the filename field and the `.txt` button stay, and the button opens the native save panel.
+- Inside the app the page's buttons go through the native side:
+  - Open shows the native Open panel. The file replaces an empty Untitled window, or opens in a new window as with File > Open.
+  - The skull closes the document (saved first, as with File > Close) instead of erasing it; the app keeps running.
+  - The filename field and the `.txt` button stay, and `.txt` opens the native save panel.
 - The sandbox allows User Selected File (Read/Write) and Outgoing Connections (Client). WebKit's processes need the network entitlement to start; the page's Content Security Policy still limits which hosts it can reach.
 - Keep bridge protocol 1 compatible. If it must change, update `js/host.js`, `window.TypewrencherHost` in `js/app.js` and `WebEditorView.swift` together.
 
