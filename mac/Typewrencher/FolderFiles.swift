@@ -8,11 +8,12 @@ enum FolderAccess {
     private static let key = "folderBookmarks"            // folder path -> bookmark data
     private static var active: [String: URL] = [:]       // granted folders whose security scope is started
 
-    // A URL the app may list, or nil when the person has not granted this folder (or one above it).
+    // A URL the app may list and open files in, or nil when the person has not granted this folder
+    // (or one above it). Being able to list a folder is not enough: in some places, such as Documents
+    // synced with iCloud, the sandbox allows listing the folder but not opening the files in it.
     static func url(for folder: URL) -> URL? {
         let path = folder.standardizedFileURL.path
         if active.keys.contains(where: { covers($0, path) }) { return folder }
-        if (try? FileManager.default.contentsOfDirectory(atPath: path)) != nil { return folder } // already in the sandbox
         for (granted, data) in bookmarks where covers(granted, path) {
             var stale = false
             guard let url = try? URL(resolvingBookmarkData: data, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &stale),
