@@ -1894,6 +1894,20 @@ test('host: notify shows the message on the notice line and announces it; a brow
   b.flush(12000); assert.equal(n.hostNote.hidden, true);
   const w = boot(); assert.equal(w.nodes.hostNote.hidden !== false, true); assert.ok(Object.hasOwn(w.nodes.hostNote.attrs, 'hidden'));
 });
+test('host: a sticky notice stays past 12 s until replaced or cleared; a plain one still times out', () => {
+  const b = bootHost(), n = b.nodes;
+  b.host().notify('Typewrencher couldn’t save Poem: no permission.', {sticky: true});
+  b.flush(12000); b.flush(); assert.equal(n.hostNote.hidden, false, 'still showing after every timer'); assert.match(n.hostNote.textContent, /couldn.t save Poem/);
+  b.host().notify(''); assert.equal(n.hostNote.hidden, true); assert.equal(n.hostNote.textContent, '', 'an empty message clears it');
+  b.host().notify('Sticky again', {sticky: true}); b.host().notify('A plain message');
+  assert.equal(n.hostNote.textContent, 'A plain message', 'a new message replaces a sticky one');
+  b.flush(12000); assert.equal(n.hostNote.hidden, true, 'and times out like any plain message');
+});
+test('name field label: Save as in a browser, Name in the Mac app; the placeholder stays', () => {
+  assert.match(read('index.html'), /<span id="fnameText" class="fname-text">Save as<\/span>/);
+  assert.equal(boot().nodes.fnameText.textContent, '', 'a browser leaves the written Save as alone');
+  const h = bootHost().nodes; assert.equal(h.fnameText.textContent, 'Name'); assert.equal(h.fname.getAttribute('placeholder'), 'filename');
+});
 test('host: the Open button asks the native side for its Open panel instead of the file picker', () => {
   const b = bootHost(), n = b.nodes; let picked = 0; n.openFile.click = () => picked++;
   n.openBtn.click();

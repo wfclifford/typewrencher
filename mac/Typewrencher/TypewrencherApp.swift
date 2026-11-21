@@ -52,7 +52,7 @@ struct FileCommands: Commands {
             }
         }
         CommandGroup(replacing: .saveItem) {
-            Button("Close") { NSApp.keyWindow?.performClose(nil) }.keyboardShortcut("w")
+            Button("Close") { session.closeWindow() }.keyboardShortcut("w")   // closing the one window quits
             Button("Save") { session.saveFromMenu() }.keyboardShortcut("s")
             Button("Save As…") { session.saveAs() }.keyboardShortcut("s", modifiers: [.command, .shift])
             Button("Export…") { session.exportFromMenu() }.keyboardShortcut("e", modifiers: [.command, .shift])

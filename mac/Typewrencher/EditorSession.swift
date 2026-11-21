@@ -26,7 +26,7 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
     private weak var web: WKWebView?
     private weak var window: NSWindow?
     private var pageReady = false, launched = false
-    private var queuedNotes: [String] = []        // messages from before the page was ready
+    private var queuedNotes: [(String, Bool)] = [] // messages (and sticky) from before the page was ready
     private var pendingOpen: URL?                  // a Finder or Dock open that arrived before the page
 
     private var fileURL: URL?                      // the current document
@@ -35,6 +35,19 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
     private var saveWork: DispatchWorkItem?
     private var fileWatcher: PathWatcher?
     private var renaming = false
+
+    // Saving the current file is failing: a sticky notice is showing, cleared by the next good save.
+    private var saveFailure: String?               // the reason, for the quit notice
+    // A quit was refused because the save failed: a second quit within 15 s, or with no typing since, quits.
+    private var quitRefusedAt: Date?, quitRefusedText: String?
+
+    // Operations that change which file is open (switching, New, renaming) run one at a time, each starting
+    // from the page's current text, so two that arrive close together cannot interleave.
+    private var operations: [(@escaping () -> Void) -> Void] = []
+    private var operating = false
+    // Just after a switch, until the page shows the new text: the file that was left. Text the page sends
+    // in that moment was typed into the old file and goes there, never into the new one.
+    private var leaving: URL?
 
     private var filesOpen = false                  // the page's files drawer is showing
     private var folderWatcher: PathWatcher?
@@ -66,6 +79,12 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         self.window = window
         window.tabbingMode = .disallowed
         window.representedURL = fileURL
+        // Closing the one window quits the app. The close button asks to quit instead of closing first, so a
+        // quit that is refused (a save that keeps failing) leaves the window open with its notice.
+        if let close = window.standardWindowButton(.closeButton) {
+            close.target = self
+            close.action = #selector(closeWindow)
+        }
         // Size and position are kept between launches. SwiftUI gives the window its default size after it
         // attaches, which would overwrite the saved frame, so the saved frame is applied again just after.
         let name = "TypewrencherMain"
@@ -90,10 +109,18 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
             filesOpen = false   // a reloaded page says again whether its drawer is open
             if !launched { launched = true; launch() } else { push() }
             let notes = queuedNotes; queuedNotes = []
-            notes.forEach(notify)
+            notes.forEach { notify($0.0, sticky: $0.1) }
             replyHandler(nil, nil)
         case "textChanged":
-            if let newText = body["text"] as? String { text = newText; scheduleSave() }
+            if let newText = body["text"] as? String {
+                if let old = leaving {
+                    // Typed into the file just left, before the page showed the new one: it belongs there.
+                    try? TextFile.write(newText, to: old, atomically: FolderAccess.url(for: old.deletingLastPathComponent()) != nil)
+                } else {
+                    text = newText
+                    scheduleSave()
+                }
+            }
             replyHandler(nil, nil)
         case "export":
             export(filename: body["filename"] as? String ?? "title.txt", data: body["data"] as? String ?? "", reply: replyHandler)
@@ -102,9 +129,10 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         case "new":
             newDocument(); replyHandler(nil, nil)
         case "rename":
-            rename(to: body["name"] as? String ?? "", reply: replyHandler)
+            let raw = body["name"] as? String ?? ""
+            perform { finished in self.rename(to: raw) { error in replyHandler(nil, error); finished() } }
         case "close":
-            window?.performClose(nil); replyHandler(nil, nil)   // no longer sent by the page; still handled
+            closeWindow(); replyHandler(nil, nil)   // no longer sent by the page; still handled
         case "files":
             filesOpen = body["open"] as? Bool ?? false
             if filesOpen { sendFiles() } else { folderWatcher = nil; watchedFolder = nil }
@@ -122,6 +150,27 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         }
     }
 
+    // File > Close, the close button and the page's close message: the same as quitting.
+    @objc func closeWindow() { NSApp.terminate(nil) }
+
+    // MARK: One operation at a time
+
+    // Runs an operation that changes which file is open after the ones before it have finished.
+    private func perform(_ operation: @escaping (@escaping () -> Void) -> Void) {
+        operations.append(operation)
+        runNextOperation()
+    }
+
+    private func runNextOperation() {
+        guard !operating, !operations.isEmpty else { return }
+        operating = true
+        let operation = operations.removeFirst()
+        operation {
+            self.operating = false
+            self.runNextOperation()
+        }
+    }
+
     // MARK: Opening
 
     // Finder, the Dock icon and Open Recent. Before the page is ready the file waits and opens at launch.
@@ -132,21 +181,41 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
 
     // At launch: a file from Finder or the Dock, else the last-open file, else a new document.
     private func launch() {
-        if let url = pendingOpen { pendingOpen = nil; if switchTo(url) { return } }
-        if let last = FileAccess.lastFile {
-            if FileManager.default.fileExists(atPath: last.path), switchTo(last) { return }
-            notify("Typewrencher couldn't reopen \(last.deletingPathExtension().lastPathComponent).")
+        if let url = pendingOpen {
+            pendingOpen = nil
+            switchTo(url) { opened in if !opened { self.reopenLastFile() } }
+        } else {
+            reopenLastFile()
         }
-        newDocument()
     }
 
-    // The one way to open a file: save the current one, read the new one, then show it everywhere.
-    // On any failure the current file stays open and the person is told on the notice line.
+    private func reopenLastFile() {
+        guard let last = FileAccess.lastFile else { return newDocument() }
+        let couldNot = { self.notify("Typewrencher couldn't reopen \(last.deletingPathExtension().lastPathComponent).") }
+        guard FileManager.default.fileExists(atPath: last.path) else { couldNot(); return newDocument() }
+        switchTo(last) { opened in if !opened { couldNot(); self.newDocument() } }
+    }
+
+    // The one way to open a file, for every path (the drawer, File > Open, Open Recent, Finder, the Dock):
+    // in turn with other switches, take the page's current text, save the current file, read the new one,
+    // then show it everywhere. On any failure the current file stays open and the person is told why.
+    func switchTo(_ target: URL, then done: ((Bool) -> Void)? = nil) {
+        perform { finished in
+            self.currentText { _ in
+                let opened = self.openNow(target)
+                done?(opened)
+                finished()
+            }
+        }
+    }
+
+    // The switch itself, for use inside an operation. keepCurrent: leave the current file as it is on disk
+    // without saving it (Save As has just written its text to the new file, so it is safe there).
     @discardableResult
-    func switchTo(_ target: URL, createdUntitled: Bool = false) -> Bool {
+    private func openNow(_ target: URL, createdUntitled: Bool = false, keepCurrent: Bool = false) -> Bool {
         let url = target.standardizedFileURL
         if url == fileURL { push(); return true }
-        guard saveNow() else { return false }
+        if !keepCurrent { guard saveNow() else { return false } }
         let newText: String
         do {
             newText = try readWithAccess(url)
@@ -163,6 +232,14 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
             trashIfEmptyUntitled(old)
             FileAccess.stop(old)
         }
+        if keepCurrent, saveFailure != nil {   // the failing file was left; its notice no longer applies
+            saveFailure = nil
+            quitRefusedAt = nil
+            notify("")
+        }
+        // After Save As the page's text is this file's text, so late typing belongs here; otherwise it
+        // belongs to the file just left.
+        leaving = keepCurrent ? nil : old
         remember(url)
         push(newText: true)
         showInWindow()
@@ -205,18 +282,33 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.saveDelay, execute: work)
     }
 
-    // Writes the newest text if it differs from the file. False (and a notice) when writing fails.
+    struct MovedOrDeleted: LocalizedError {
+        var errorDescription: String? { "it was moved or deleted outside Typewrencher" }
+    }
+
+    // Writes the newest text if it differs from the file. False when writing fails; the reason then stays
+    // on the notice line (sticky) until a save of this file works, since meanwhile switching away is
+    // refused and quitting asks first. A file moved or deleted outside the app is not recreated, so a file
+    // the person removed does not come back on its own; Save As keeps the text.
     @discardableResult
     func saveNow() -> Bool {
         saveWork?.cancel(); saveWork = nil
         guard let url = fileURL, text != savedText else { return true }
         do {
+            guard FileManager.default.fileExists(atPath: url.path) else { throw MovedOrDeleted() }
             let atomically = FolderAccess.url(for: url.deletingLastPathComponent()) != nil
             try TextFile.write(text, to: url, atomically: atomically)
             savedText = text
+            if saveFailure != nil {
+                saveFailure = nil
+                quitRefusedAt = nil
+                notify("")
+            }
             return true
         } catch {
-            notify("Typewrencher couldn't save \(name): \(Self.reason(error)).")
+            let reason = Self.reason(error)
+            saveFailure = reason
+            notify("Typewrencher couldn't save \(name): \(reason). Use Save As… to keep your text.", sticky: true)
             return false
         }
     }
@@ -226,21 +318,30 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         currentText { _ in self.saveNow() }
     }
 
-    // File > Save As…: write the text to a new file the person chooses, then switch to it.
+    // File > Save As…: write the text to a new file the person chooses, then switch to it. This is also the
+    // way out when the current file cannot be saved: the switch does not save the old file, because its
+    // text is already safe in the new one.
     func saveAs() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.plainText]
         panel.nameFieldStringValue = (name.isEmpty ? "untitled" : name) + ".txt"
         if let folder = fileURL?.deletingLastPathComponent() { panel.directoryURL = folder }
         run(panel) { url in
-            self.currentText { text in
-                do {
-                    try TextFile.write(text, to: url, atomically: true)
-                } catch {
-                    self.notify("Typewrencher couldn't save \(url.deletingPathExtension().lastPathComponent): \(Self.reason(error)).")
-                    return
+            self.perform { finished in
+                self.currentText { text in
+                    do {
+                        try TextFile.write(text, to: url, atomically: true)
+                    } catch {
+                        self.notify("Typewrencher couldn't save \(url.deletingPathExtension().lastPathComponent): \(Self.reason(error)).", sticky: true)
+                        return finished()
+                    }
+                    if url.standardizedFileURL == self.fileURL {   // saved over the current file
+                        self.savedText = text
+                        if self.saveFailure != nil { self.saveFailure = nil; self.quitRefusedAt = nil; self.notify("") }
+                    }
+                    self.openNow(url, keepCurrent: true)
+                    finished()
                 }
-                self.switchTo(url)
             }
         }
     }
@@ -250,26 +351,39 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         web?.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.exportNow()")
     }
 
-    // The page's current text, which may be newer than its last textChanged message.
+    // The page's current text, which may be newer than its last textChanged message. A reply that arrives
+    // after a switch is the old file's text, so it is ignored.
     private func currentText(_ done: @escaping (String) -> Void) {
         guard pageReady, let web else { return done(text) }
+        let file = fileURL
         web.evaluateJavaScript("window.TypewrencherHost.getText()") { result, _ in
-            if let newText = result as? String { self.text = newText }
+            if let newText = result as? String, self.fileURL == file, self.leaving == nil { self.text = newText }
             done(self.text)
         }
     }
 
-    // Quitting (or closing the window, which quits): save the newest text and trash an empty untitled
-    // file. If the save fails, the app stays open with the message showing.
+    // Quitting (Cmd-Q, File > Close, the close button): save the newest text and trash an empty untitled
+    // file. If saving fails the app stays open and says how to go on; asking to quit again within 15
+    // seconds, or at any time without typing since that notice, quits without saving.
     func prepareToQuit(_ done: @escaping (Bool) -> Void) {
         var finished = false
-        let finish = { (ok: Bool) in if !finished { finished = true; done(ok) } }
-        currentText { _ in
-            guard self.saveNow() else { return finish(false) }
-            if let url = self.fileURL { self.trashIfEmptyUntitled(url) }
-            finish(true)
+        let decide = {
+            guard !finished else { return }
+            finished = true
+            if self.saveNow() {
+                if let url = self.fileURL { self.trashIfEmptyUntitled(url) }
+                return done(true)
+            }
+            if let at = self.quitRefusedAt, Date().timeIntervalSince(at) < 15 || self.text == self.quitRefusedText {
+                return done(true)   // asked again: quit without saving
+            }
+            self.quitRefusedAt = Date()
+            self.quitRefusedText = self.text
+            self.notify("Typewrencher couldn't save \(self.name): \(self.saveFailure ?? "unknown error"). Press ⌘Q again to quit without saving, or use Save As… to keep your text.", sticky: true)
+            done(false)
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { finish(self.saveNow()) }   // the page did not answer
+        currentText { _ in decide() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { decide() }   // the page did not answer
     }
 
     // MARK: New documents
@@ -277,19 +391,25 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
     // The "+" button and File > New: a new empty file named "untitled.txt" (or "untitled 2.txt", ...) in
     // the current file's folder, or in the documents folder when the app may not write there.
     func newDocument() {
-        if let url = fileURL, isUntitled(url), text.isEmpty, savedText.isEmpty { return }   // already a blank page
-        guard saveNow() else { return }
-        if let folder = fileURL?.deletingLastPathComponent(), FolderAccess.url(for: folder) != nil {
-            createUntitled(in: folder)
-        } else if let path = UserDefaults.standard.string(forKey: Self.documentsKey),
-                  FolderAccess.url(for: URL(fileURLWithPath: path)) != nil {
-            createUntitled(in: URL(fileURLWithPath: path))
-        } else {
-            chooseDocumentsFolder()
+        perform { finished in
+            self.currentText { _ in
+                if let url = self.fileURL, self.isUntitled(url), self.text.isEmpty, self.savedText.isEmpty { return finished() }   // already a blank page
+                guard self.saveNow() else { return finished() }
+                if let folder = self.fileURL?.deletingLastPathComponent(), FolderAccess.url(for: folder) != nil {
+                    self.createUntitled(in: folder)
+                    finished()
+                } else if let path = UserDefaults.standard.string(forKey: Self.documentsKey),
+                          FolderAccess.url(for: URL(fileURLWithPath: path)) != nil {
+                    self.createUntitled(in: URL(fileURLWithPath: path))
+                    finished()
+                } else {
+                    self.chooseDocumentsFolder(then: finished)
+                }
+            }
         }
     }
 
-    private func chooseDocumentsFolder() {
+    private func chooseDocumentsFolder(then finished: @escaping () -> Void) {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -297,10 +417,11 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         panel.allowsMultipleSelection = false
         panel.prompt = "Choose"
         panel.message = "Choose a folder for new documents"
-        run(panel, ifCancelled: { self.notify("Choose a folder to create new documents in.") }) { folder in
+        run(panel, ifCancelled: { self.notify("Choose a folder to create new documents in."); finished() }) { folder in
             FolderAccess.remember(folder)
             UserDefaults.standard.set(folder.standardizedFileURL.path, forKey: Self.documentsKey)
             self.createUntitled(in: folder)
+            finished()
         }
     }
 
@@ -315,7 +436,7 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         guard fm.createFile(atPath: url.path, contents: Data()) else {
             return notify("Typewrencher doesn't have permission to create a document in “\(folder.lastPathComponent)”.")
         }
-        switchTo(url, createdUntitled: true)
+        openNow(url, createdUntitled: true)
     }
 
     private var untitled: Set<String> { Set(UserDefaults.standard.stringArray(forKey: Self.untitledKey) ?? []) }
@@ -338,38 +459,38 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
     // MARK: Renaming
 
     // The page's name field: rename the file in its folder. A refused rename sends the old name back to
-    // the page and replies with an error.
-    private func rename(to raw: String, reply: @escaping (Any?, String?) -> Void) {
-        guard let url = fileURL else { return reply(nil, nil) }
+    // the page, says why on the notice line, and reports an error (the reply to the page's message).
+    private func rename(to raw: String, done: @escaping (String?) -> Void) {
+        guard let url = fileURL else { return done(nil) }
         let clean = Self.cleanName(raw)
-        guard !clean.isEmpty, clean != name else { push(); return reply(nil, nil) }   // nothing to rename
+        guard !clean.isEmpty, clean != name else { push(); return done(nil) }   // nothing to rename
         let folder = url.deletingLastPathComponent()
         guard FolderAccess.url(for: folder) != nil else {
             // The sandbox only lets the app rename inside a folder the person has granted.
             askForFolder(folder) { granted in
-                if granted { self.rename(to: raw, reply: reply); self.sendFiles(); return }
+                if granted { self.sendFiles(); return self.rename(to: raw, done: done) }
                 self.push()
                 self.notify("Typewrencher needs access to “\(folder.lastPathComponent)” to rename files there.")
-                reply(nil, "no folder access")
+                done("no folder access")
             }
             return
         }
         let target = folder.appendingPathComponent(clean + ".txt").standardizedFileURL
-        let caseOnly = target.path.lowercased() == url.path.lowercased()
+        let caseOnly = target.path.lowercased() == url.path.lowercased()   // "poem" to "Poem"
         if !caseOnly, FileManager.default.fileExists(atPath: target.path) {
             push()
             notify("A file named \(clean) already exists.")
-            return reply(nil, "exists")
+            return done("exists")
         }
-        guard saveNow() else { push(); return reply(nil, "save failed") }
+        guard saveNow() else { push(); return done("save failed") }
         renaming = true; fileWatcher = nil
         defer { renaming = false; watchFile() }
         do {
-            try FileManager.default.moveItem(at: url, to: target)
+            try Self.move(url, to: target, caseOnly: caseOnly)
         } catch {
             push()
             notify("Typewrencher couldn't rename \(name): \(Self.reason(error)).")
-            return reply(nil, "failed")
+            return done("failed")
         }
         setUntitled(url, false)   // a named file is kept even when empty
         FileAccess.stop(url)
@@ -378,7 +499,22 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         push()
         showInWindow()
         sendFiles()
-        reply(nil, nil)
+        done(nil)
+    }
+
+    // On a case-insensitive volume a rename that only changes case can be refused as "already exists";
+    // then it goes through a temporary name in the same folder.
+    private static func move(_ url: URL, to target: URL, caseOnly: Bool) throws {
+        do {
+            try FileManager.default.moveItem(at: url, to: target)
+        } catch where caseOnly {
+            let temporary = url.deletingLastPathComponent().appendingPathComponent(".typewrencher-rename-\(UUID().uuidString).txt")
+            try FileManager.default.moveItem(at: url, to: temporary)
+            do { try FileManager.default.moveItem(at: temporary, to: target) } catch {
+                try? FileManager.default.moveItem(at: temporary, to: url)   // put it back
+                throw error
+            }
+        }
     }
 
     // Like the page's export name: no path or reserved characters, no ".txt", no spaces or dots at the ends.
@@ -404,7 +540,9 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         guard !renaming, let url = fileURL else { return }
         watchFile()   // a replaced file needs a new watch
         guard let disk = try? TextFile.read(url) else {
-            if !FileManager.default.fileExists(atPath: url.path) { notify("\(name) was moved or deleted outside Typewrencher.") }
+            if !FileManager.default.fileExists(atPath: url.path) {
+                notify("\(name) was moved or deleted outside Typewrencher. Your text is still here; use Save As… to keep it.", sticky: true)
+            }
             return
         }
         guard disk != savedText else { return }
@@ -433,6 +571,7 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         guard let json = try? JSONSerialization.data(withJSONObject: args), let js = String(data: json, encoding: .utf8) else { return }
         web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.setDocument(\(js))") { _, _ in
             if newText { web.undoManager?.removeAllActions() }
+            self.leaving = nil   // the page shows this file now
         }
     }
 
@@ -442,11 +581,12 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         window?.representedURL = fileURL   // the title bar's file icon
     }
 
-    // A short message on the page's notice line; queued until the page is ready.
-    func notify(_ message: String) {
-        guard pageReady, let web else { return queuedNotes.append(message) }
+    // A short message on the page's notice line; queued until the page is ready. A sticky message stays
+    // until replaced (used while a save keeps failing); notify("") clears the line.
+    func notify(_ message: String, sticky: Bool = false) {
+        guard pageReady, let web else { return queuedNotes.append((message, sticky)) }
         guard let json = try? JSONSerialization.data(withJSONObject: [message]), let js = String(data: json, encoding: .utf8) else { return }
-        web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.notify(\(js)[0])")
+        web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.notify(\(js)[0], { sticky: \(sticky) })")
     }
 
     private static func reason(_ error: Error) -> String {

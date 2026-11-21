@@ -516,6 +516,8 @@
   }
   if (host) {
     root.setAttribute("data-host", "mac"); // CSS shows the app's icons on Open and .txt
+    // In the Mac app the field names (and renames) the document's file; exporting is the Export button.
+    document.getElementById("fnameText").textContent = "Name";
     // About: in the Mac app the document is a file that saves itself, and the "+" starts a new one.
     document.getElementById("aboutSkull").textContent = "The plus button starts a new document. Your text is saved to its file as you type.";
     filesBtn.hidden = false;
@@ -524,15 +526,19 @@
   }
 
   // Mac app only: the native side's messages (a failed save, a refused rename, ...) show on the notice
-  // line under the counts and are announced through the status region, instead of in an alert.
+  // line under the counts and are announced through the status region, instead of in an alert. A message
+  // clears after 12 seconds; a sticky one ({ sticky: true }, used while saving keeps failing) stays until
+  // the next message replaces it or notify("") clears it.
   var hostNote = document.getElementById("hostNote"), noteTimer = null;
-  function notify(message) {
+  function notify(message, options) {
     var text = String(message || "");
     hostNote.textContent = text;
     hostNote.hidden = !text;
     if (text) say(text);
     clearTimeout(noteTimer);
-    noteTimer = setTimeout(function () { hostNote.hidden = true; hostNote.textContent = ""; }, 12000);
+    if (text && !(options && options.sticky)) {
+      noteTimer = setTimeout(function () { hostNote.hidden = true; hostNote.textContent = ""; }, 12000);
+    }
   }
 
   // The native side drives the page through this object (protocol in js/host.js).

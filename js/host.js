@@ -23,7 +23,9 @@
 //     setDocument({ text, name })                  show this text and name; sends neither textChanged nor rename back
 //     setFiles({ access, folder, path, current, files: [{ name, modified }] })
 //                                                  the drawer's list; access is 'granted', 'needed' or 'none' (untitled)
-//     notify(message)                              show a short message on the notice line (no alerts in the app)
+//     notify(message, { sticky })                  show a short message on the notice line (no alerts in the app);
+//                                                  it clears after 12 s, or stays if sticky until replaced;
+//                                                  notify('') clears it. The second argument is optional.
 //     exportNow()                                  do what the Export button does (File > Export)
 //     getText()                                    the current text
 //     exportText()                                 the text as exported: optional line counts and totals
