@@ -64,8 +64,17 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
     private func attach(_ window: NSWindow?) {
         guard let window, self.window !== window else { return }
         self.window = window
-        window.setFrameAutosaveName("TypewrencherMain")   // size and position kept between launches
         window.tabbingMode = .disallowed
+        window.representedURL = fileURL
+        // Size and position are kept between launches. SwiftUI gives the window its default size after it
+        // attaches, which would overwrite the saved frame, so the saved frame is applied again just after.
+        let name = "TypewrencherMain"
+        let saved = UserDefaults.standard.string(forKey: "NSWindow Frame \(name)")
+        if let saved { window.setFrame(from: saved) }
+        DispatchQueue.main.async {
+            if let saved { window.setFrame(from: saved) }
+            window.setFrameAutosaveName(name)
+        }
     }
 
     // MARK: Messages from the page
@@ -155,7 +164,7 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
             FileAccess.stop(old)
         }
         remember(url)
-        push()
+        push(newText: true)
         showInWindow()
         watchFile()
         sendFiles()
@@ -389,6 +398,8 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
     }
 
     // The current file changed on disk. This app's own saves read back as savedText and are ignored.
+    // The page holds typing for about 300 ms before sending it, so its current text is asked for first:
+    // typing that has not arrived yet still counts as the person's change and is kept.
     private func fileChangedOnDisk() {
         guard !renaming, let url = fileURL else { return }
         watchFile()   // a replaced file needs a new watch
@@ -397,28 +408,38 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
             return
         }
         guard disk != savedText else { return }
-        if text != savedText {
-            savedText = disk   // the next save writes the person's text over the outside change
-            notify("Typewrencher kept your changes; the file was also changed elsewhere.")
-        } else {
-            text = disk
-            savedText = disk
-            push()
+        currentText { _ in
+            guard url == self.fileURL else { return }   // switched away meanwhile
+            if self.text != self.savedText {
+                self.savedText = disk   // the person's text is written over the outside change
+                self.scheduleSave()
+                self.notify("Typewrencher kept your changes; the file was also changed elsewhere.")
+            } else {
+                self.text = disk
+                self.savedText = disk
+                self.push(newText: true)
+            }
         }
     }
 
     // MARK: Showing the document
 
-    private func push() {
+    // Shows the document's text and name in the page. newText: a different text replaced the old one
+    // (another file, or the file reloaded), so the web view's undo history is cleared; otherwise Cmd-Z
+    // would replay edits from the previous text into this one. Only the name changed: undo is kept.
+    private func push(newText: Bool = false) {
         guard pageReady, let web else { return }
         let args: [String: Any] = ["text": text, "name": name]
         guard let json = try? JSONSerialization.data(withJSONObject: args), let js = String(data: json, encoding: .utf8) else { return }
-        web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.setDocument(\(js))")
+        web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.setDocument(\(js))") { _, _ in
+            if newText { web.undoManager?.removeAllActions() }
+        }
     }
 
     private func showInWindow() {
         state.title = name.isEmpty ? "Typewrencher" : name
         state.fileURL = fileURL
+        window?.representedURL = fileURL   // the title bar's file icon
     }
 
     // A short message on the page's notice line; queued until the page is ready.

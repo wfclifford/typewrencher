@@ -20,15 +20,13 @@ struct EditorWindow: View {
     let session: EditorSession
     let state: WindowState
 
+    // One view structure, always: a branch here (for example adding navigationDocument once a file is
+    // open) makes SwiftUI build a new web view, which reloads the page. The title bar's file icon is set
+    // on the window instead (EditorSession.showInWindow).
     var body: some View {
-        let editor = WebEditorView(session: session)
+        WebEditorView(session: session)
             .frame(minWidth: 480, minHeight: 360)
             .navigationTitle(state.title)
-        if let url = state.fileURL {
-            editor.navigationDocument(url)   // the title bar's file icon
-        } else {
-            editor
-        }
     }
 }
 
