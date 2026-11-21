@@ -154,3 +154,61 @@ Also checked:
 2. WebKit's undo survives replacing a textarea's value (g above).
 3. `NSLog` from the sandboxed debug app did not show in `log show`; `Logger` with `privacy: .public` did. That logging was used only for this investigation and removed.
 4. Bookmarks for folders and files work without the `bookmarks.app-scope` entitlement.
+
+### Follow-up (owner's review of PR 19)
+
+Run on macOS 27.2 with a Debug build, plus the installed Release build where noted, in scratch folders under `~/Developer`, checking files on disk. The app's preferences were backed up first and pointed at scratch files during the tests.
+
+#### What changed
+
+- `mac/Typewrencher/EditorSession.swift`:
+  - **Failing saves.**
+    - A failed save sets a sticky notice ("Typewrencher couldn't save <name>: <reason>. Use Save As… to keep your text.") and remembers the reason; the next good save of that file clears it with `notify("")`.
+    - Quitting while a save fails keeps the app open with "Typewrencher couldn't save <name>: <reason>. Press ⌘Q again to quit without saving, or use Save As… to keep your text." (sticky). A second quit request within 15 s, or any later one with no typing since that notice, quits without saving.
+    - File > Close and the window's close button now ask the app to quit instead of closing the window first, so a refused quit never leaves the app running with no window.
+  - **Save As as the way out.** Confirmed by reading and by running the previous build (below): `saveAs()` wrote the new file and then called `switchTo`, which began with `guard saveNow()` on the failing file, so it returned false. Now Save As writes the text to the new file and switches with `keepCurrent`, which does not save the old file.
+  - **Switches.**
+    - Every switch, and New, Save As and rename, runs as one operation at a time, and each starts from the page's current text (`getText()`).
+    - A `getText()` reply that arrives after a switch is ignored.
+    - Until the page shows the new file, any text it sends was typed into the file just left, and is written there, never into the new one.
+  - **Rename.**
+    - A case-only rename tries `moveItem` first and goes through a temporary name in the same folder if that is refused.
+    - A failed move restores the field and says why (already the case; now tested).
+  - **Moved or deleted file.** If the current file is moved or deleted outside the app, the sticky notice says "<name> was moved or deleted outside Typewrencher. Your text is still here; use Save As… to keep it." Later saves are refused with the reason "it was moved or deleted outside Typewrencher". The app does **not** recreate the file, so a file the person deleted or moved does not come back on its own, and a moved file does not leave a duplicate at the old path. Save As keeps the text, and quitting works as in item 1.
+- `mac/Typewrencher/TypewrencherApp.swift`: File > Close calls the same quit path.
+- **Web**, with a host only (browsers unchanged):
+  - `index.html`: the name field's label span gets `id="fnameText"`.
+  - `js/app.js`: the label reads "Name" with a host; `notify(message, { sticky })`: a sticky message stays until replaced or cleared with `notify("")`, and others still clear after 12 s.
+  - `js/host.js`: header documents the optional second argument.
+  - `tests/app.test.js`: 2 tests added (sticky past 12 s, cleared by an empty message, a plain one still times out; "Save as" in a browser and "Name" with a host, placeholder unchanged). 221 pass. Restamped.
+
+#### Test results
+
+- **1a and 1c (quit). Pass.**
+  - Read-only current file, typed, ⌘Q: the app stayed open with the exact quit notice above; a second ⌘Q quit. The original file on disk was unchanged (expected).
+  - The red close button with a failing save: still running, 1 window. A second click 20 s later, with no typing since, quit.
+- **1b (Save As). Bug confirmed, then pass.**
+  - Previous (installed) build: read-only file, typed, Save As to `Rescue.txt`: `Rescue.txt` had the text, but the window stayed on "Locked" with "Typewrencher couldn't save Locked: no permission." (the build would not quit either until the file was made writable).
+  - New build, same steps: the window switched to "Rescue", `Rescue.txt` contained "locked text\n typed", the save notice cleared, and Locked was unchanged on disk.
+- **2 (Name label). Pass.** The app shows "Name" beside the field; tests confirm "Save as" in a browser.
+- **3 (sticky notices). Pass.**
+  - The save-failure notice was still showing 15 s after typing into the read-only file.
+  - It cleared after Save As.
+  - Tests cover sticky versus plain and `notify("")`.
+- **4 (newest text on switch). Pass.**
+  - Typed " rNEND", then `open -a Typewrencher Y.txt` straight away (the whole `open -a` command took 110–133 ms; the open event arrives within that). The file left ended with " r1END", " r2END" and " r3END" in 3 of 3 rounds; Y was untouched.
+  - The same with the previous build lost the typing entirely (" oldEND" never reached the file).
+  - Two opens sent at the same moment, and three in a row, lost nothing and crossed nothing ("xx1" stayed in X, "xx2" in Y).
+- **5. Edge cases.**
+  - **Case-only rename: pass.** "X" to "x" (after granting the folder): `x.txt`, title "x", text intact, no temporary file left. On this volume the direct move worked (also checked with a separate script), so the temporary-name fallback was not exercised.
+  - **Rename in a read-only folder: pass.** Field restored to "x", files unchanged, notice "Typewrencher couldn't rename x: no permission.", no sheet.
+  - **File deleted while open: pass.** The text stayed in the page with the moved-or-deleted notice. Typing gave "Typewrencher couldn't save x: it was moved or deleted outside Typewrencher. Use Save As… to keep your text."; the file was not recreated. Quitting took two ⌘Q, as designed.
+  - **Real Finder double-click: not done.** TextEdit is the default app for `.txt` on this Mac, so a double-click opens TextEdit; I did not change the owner's default.
+  - **Real drag onto the Dock icon: not done.** The Dock auto-hides (the icon sits below the screen edge), and I did not get a reliable scripted drag.
+  - **Finder's scripted Open With was not a valid test.** `tell application "Finder" to open … using …` did nothing at all, not even launching the app when it was not running, so it shows nothing about the app. A try with Finder's real right-click menu was stopped before it finished.
+  - The open-documents event itself (`open -a`) works and reaches `application(_:open:)`. **Please check by hand:** double-click a `.txt` (with Typewrencher as its app) and drag a `.txt` onto the Dock icon; each must switch the one window.
+
+#### Not done
+
+- The Finder double-click and Dock drag above.
+- The temporary-name path of the case-only rename (not reached on this volume).
