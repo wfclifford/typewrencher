@@ -2,14 +2,24 @@
 
 Personal working list for Typewrencher. This project does not take issues, pull requests or feature requests; forks are welcome.
 
+## Design principles
+
+- **Focused writing environment.** A main goal on every platform. Keep people inside the UI whenever possible.
+- No `alert()` or `confirm()` dialogs, no new tabs or windows, and no sending people to settings or docs elsewhere.
+- Feedback is inline: button labels, the status line, the drawer. No modals or toasts.
+- Accessibility fixes live in the app, not in instructions for changing browser settings.
+- The iOS share sheet for export is the one accepted exit, because iOS offers no other way to save a file. New features that need to leave the writing surface (file pickers, in-place save, outbound links) face a higher bar.
+
 **Status key:** Ready (decided, build on "build it") · Idea (documented or proposed, not scheduled) · Testing (shipped, needs verification) · Done · Rejected
 
 ## Ready
 
+_Nothing queued._
+
 ## Idea
 
 - **Autism-friendly improvements.** Documented in the Docs artifact "Autism-friendly improvements for Typewrencher".
-- **Safari Tab behavior.** Safari skips buttons and toggles by default. Options: a README note, or `tabindex` on the controls (unverified).
+- **Safari Tab behavior.** Safari skips buttons and toggles by default. In-app fix only (no README note or browser-settings instructions), such as `tabindex` on the controls. Unverified in Safari.
 - **Node 24 upgrade.** Bump the GitHub Actions versions in `.github/workflows/pages.yml`. Effort is documented in the Docs artifact "Upgrading GitHub Actions to Node 24".
 
 ## Testing
