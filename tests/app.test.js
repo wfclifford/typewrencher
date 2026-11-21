@@ -1778,9 +1778,10 @@ test('in a browser the host bridge is off: Open and Save stay visible and no glo
   assert.equal(AppHost.create({webkit: {messageHandlers: {}}}, {}), null);
   assert.equal(AppHost.create({webkit: {messageHandlers: {typewrencher: {}}}}, {}), null, 'a handler without postMessage is not a host');
 });
-test('inside the Mac app the page hides Open and Save, announces itself and exposes TypewrencherHost', () => {
+test('inside the Mac app the page hides Open but keeps the filename and .txt export, announces itself and exposes TypewrencherHost', () => {
   const b = bootHost();
-  assert.equal(b.nodes.savebox.hidden, true);
+  assert.equal(b.nodes.savebox.hidden, false);
+  assert.equal(b.nodes.openBtn.hidden, true);
   assert.deepEqual(JSON.parse(JSON.stringify(b.messages)), [{type: 'ready', protocol: 1}]); // the page runs in its own realm
   assert.equal(b.host().protocol, 1);
   for (const fn of ['setDocument', 'getText', 'exportText']) assert.equal(typeof b.host()[fn], 'function', fn);
