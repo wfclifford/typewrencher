@@ -96,6 +96,8 @@ footer { --ffs: 0.9rem; --tp: .25rem; display: flex; gap: 1.25rem; flex-wrap: wr
 @media (max-width: 360px) { footer { --ffs: .75rem; --tp: .25rem; } }
 footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .note { margin-left: auto; font-size: 0.8rem; }
+/* Mac app only: the native side's messages (TypewrencherHost.notify), on their own line under the counts. */
+.host-note { flex-basis: 100%; margin: 0; color: var(--count); font-weight: 600; }
 .actions { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-left: auto; }
 .clear { display: inline-flex; align-items: center; gap: 0.35rem; }
 .clear svg { width: 1.05rem; height: 1.05rem; display: block; }
@@ -939,6 +941,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
 
 /* The Erase skull is a solid glyph (the shared icon rule draws outlines). */
 .tog.clear svg { fill: currentColor; stroke: none; }
+.tog.clear svg.icon-app { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; } /* the Mac app's New "+" is an outline */
 
 /* Center the skull: the (usually empty) confirm label would otherwise add a flex gap. */
 #clearLabel:empty { display: none; }

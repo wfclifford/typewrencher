@@ -1783,10 +1783,10 @@ test('inside the Mac app the page keeps Open, the filename and .txt export, anno
   assert.equal(b.nodes.savebox.hidden, false);
   assert.notEqual(b.nodes.openBtn.hidden, true);
   assert.equal(b.nodes.openBtn.getAttribute('aria-label'), 'Open a document');
-  assert.equal(b.nodes.clearBtn.getAttribute('aria-label'), 'Close document');
+  assert.equal(b.nodes.clearBtn.getAttribute('aria-label'), 'New document');
   assert.deepEqual(JSON.parse(JSON.stringify(b.messages)), [{type: 'ready', protocol: 1}]); // the page runs in its own realm
   assert.equal(b.host().protocol, 1);
-  for (const fn of ['setDocument', 'getText', 'exportText']) assert.equal(typeof b.host()[fn], 'function', fn);
+  for (const fn of ['setDocument', 'getText', 'exportText', 'setFiles', 'notify', 'exportNow']) assert.equal(typeof b.host()[fn], 'function', fn);
 });
 test('host: edits are sent once, about 300 ms after typing stops, with the newest text', () => {
   const b = bootHost(), n = b.nodes;
@@ -1834,17 +1834,79 @@ test('host: exportText gives the text the native File > Export saves, with count
   assert.match(b.host().exportText(), /cat  \(1\)/);
   assert.equal(bootHost().host().exportText(), '', 'plain by default');
 });
-test('host: the skull closes the document after sending unsent text, and erases nothing', () => {
+test('host: the skull is a New document button: one press sends unsent text, then new, and erases nothing', () => {
   const b = bootHost(), n = b.nodes; n.ed.value = 'a poem'; n.ed.emit('input');
+  assert.equal(n.clearBtn.getAttribute('aria-label'), 'New document');
   n.clearBtn.click();
-  assert.deepEqual(JSON.parse(JSON.stringify(b.messages.slice(1))), [{type: 'textChanged', text: 'a poem'}, {type: 'close'}], 'one press, newest text first'); // the page runs in its own realm
+  assert.deepEqual(JSON.parse(JSON.stringify(b.messages.slice(1))), [{type: 'textChanged', text: 'a poem'}, {type: 'new'}], 'one press, newest text first'); // the page runs in its own realm
   assert.equal(n.ed.value, 'a poem'); assert.equal(n.clearBtn.classList.contains('armed'), false);
-  b.flush(3000); assert.equal(b.messages.length, 3);
+  b.flush(3000); assert.equal(b.messages.length, 3); assert.equal(n.clearBtn.getAttribute('aria-label'), 'New document');
+  assert.equal(b.types().includes('close'), false, 'the page no longer sends close');
 });
-test('host: the skull can close an empty document', () => {
+test('host: New works on an empty document too', () => {
   const b = bootHost(), n = b.nodes;
   assert.equal(n.clearBtn.getAttribute('aria-disabled'), 'false');
-  n.clearBtn.click(); assert.deepEqual(b.types(), ['ready', 'close']);
+  n.clearBtn.click(); assert.deepEqual(b.types(), ['ready', 'new']);
+});
+test('browser: the skull still erases, with its confirmation, and the .txt button keeps its label', () => {
+  const b = boot(), n = b.nodes; n.ed.value = 'a poem'; n.ed.emit('input'); n.fname.value = 'Poem';
+  assert.equal(n.clearBtn.getAttribute('aria-label'), 'Erase text and filename');
+  assert.match(read('index.html'), /<span id="saveLabel">\.txt<\/span>/); assert.equal(n.saveLabel.textContent, '', 'the page leaves the written .txt label alone');
+  assert.equal(n.save.getAttribute('aria-label'), 'Save as .txt');
+  n.clearBtn.click(); assert.equal(n.clearBtn.classList.contains('armed'), true, 'first press asks'); assert.equal(n.ed.value, 'a poem');
+  n.clearBtn.click(); assert.equal(n.ed.value, ''); assert.equal(n.fname.value, '');
+});
+test('host: the .txt button is Export a copy, still posts export, and exportNow does the same with its Done label', async () => {
+  const b = bootHost(), n = b.nodes;
+  assert.equal(n.saveLabel.textContent, 'Export'); assert.equal(n.save.getAttribute('aria-label'), 'Export a copy as .txt');
+  n.ed.value = 'cat'; n.ed.emit('input'); n.fname.value = 'Cat';
+  b.host().exportNow();
+  assert.deepEqual(JSON.parse(JSON.stringify(b.messages.at(-1))), {type: 'export', filename: 'Cat.txt', data: 'cat'});
+  await new Promise(r => setImmediate(r)); assert.equal(n.saveLabel.textContent, 'Done'); assert.equal(n.status.textContent, '');
+  b.flush(60); assert.equal(n.status.textContent, 'Done Cat.txt');
+  b.flush(2500); assert.equal(n.saveLabel.textContent, 'Export', 'back to Export, not .txt'); assert.equal(n.save.getAttribute('aria-label'), 'Export a copy as .txt');
+});
+test('host: the name field asks to rename on Return, on leaving it and after a pause, and never because of setDocument', () => {
+  const b = bootHost(), n = b.nodes, renames = () => JSON.parse(JSON.stringify(b.messages.filter(m => m.type === 'rename')));
+  b.host().setDocument({text: 'x', name: 'Morning Fog.txt'}); b.flush(); n.fname.emit('blur');
+  assert.deepEqual(renames(), [], 'showing a name is not a rename');
+  n.fname.value = 'Evening'; n.fname.emit('input'); assert.deepEqual(renames(), [], 'not while typing');
+  b.flush(1000); assert.deepEqual(renames(), [{type: 'rename', name: 'Evening'}], 'a second after typing stops');
+  n.fname.emit('blur'); assert.equal(renames().length, 1, 'unchanged since the last rename: nothing more');
+  n.fname.value = 'Night'; n.fname.emit('input'); let prevented = false;
+  n.fname.emit('keydown', {key: 'Enter', preventDefault() { prevented = true; }});
+  assert.equal(prevented, true); assert.deepEqual(renames().at(-1), {type: 'rename', name: 'Night'}, 'Return commits');
+  assert.equal(b.types().includes('export'), false, 'Return does not export in the app');
+  b.flush(1000); assert.equal(renames().length, 2, 'the pending pause timer was cancelled');
+  b.host().setDocument({text: 'x', name: 'Night'}); n.fname.emit('blur'); assert.equal(renames().length, 2);
+});
+test('browser: Return in the name field still exports', () => {
+  const b = boot(), n = b.nodes; n.ed.value = 'cat'; n.ed.emit('input'); n.fname.value = 'Cat';
+  n.fname.emit('keydown', {key: 'Enter', preventDefault() {}});
+  assert.equal(b.download, 'cat');
+});
+test('host: notify shows the message on the notice line and announces it; a browser has no notice', () => {
+  const b = bootHost(), n = b.nodes;
+  assert.equal(n.hostNote.hidden !== false, true, 'hidden until there is a message');
+  b.host().notify('A file named My poem already exists.');
+  assert.equal(n.hostNote.hidden, false); assert.equal(n.hostNote.textContent, 'A file named My poem already exists.');
+  b.flush(60); assert.equal(n.status.textContent, 'A file named My poem already exists.', 'screen readers hear it');
+  b.flush(12000); assert.equal(n.hostNote.hidden, true);
+  const w = boot(); assert.equal(w.nodes.hostNote.hidden !== false, true); assert.ok(Object.hasOwn(w.nodes.hostNote.attrs, 'hidden'));
+});
+test('host: a sticky notice stays past 12 s until replaced or cleared; a plain one still times out', () => {
+  const b = bootHost(), n = b.nodes;
+  b.host().notify('Typewrencher couldn’t save Poem: no permission.', {sticky: true});
+  b.flush(12000); b.flush(); assert.equal(n.hostNote.hidden, false, 'still showing after every timer'); assert.match(n.hostNote.textContent, /couldn.t save Poem/);
+  b.host().notify(''); assert.equal(n.hostNote.hidden, true); assert.equal(n.hostNote.textContent, '', 'an empty message clears it');
+  b.host().notify('Sticky again', {sticky: true}); b.host().notify('A plain message');
+  assert.equal(n.hostNote.textContent, 'A plain message', 'a new message replaces a sticky one');
+  b.flush(12000); assert.equal(n.hostNote.hidden, true, 'and times out like any plain message');
+});
+test('name field label: Save as in a browser, Name in the Mac app; the placeholder stays', () => {
+  assert.match(read('index.html'), /<span id="fnameText" class="fname-text">Save as<\/span>/);
+  assert.equal(boot().nodes.fnameText.textContent, '', 'a browser leaves the written Save as alone');
+  const h = bootHost().nodes; assert.equal(h.fnameText.textContent, 'Name'); assert.equal(h.fname.getAttribute('placeholder'), 'filename');
 });
 test('host: the Open button asks the native side for its Open panel instead of the file picker', () => {
   const b = bootHost(), n = b.nodes; let picked = 0; n.openFile.click = () => picked++;
@@ -1864,9 +1926,9 @@ test('icons: Open and .txt show arrows on the website and a folder and a diskett
   assert.equal(boot().document.documentElement.getAttribute('data-host'), null, 'a browser');
   assert.equal(bootHost().document.documentElement.getAttribute('data-host'), 'mac');
 });
-test('About: the skull sentence says close inside the Mac app, and erase in a browser', () => {
+test('About: the skull sentence describes the plus button inside the Mac app, and erase in a browser', () => {
   assert.equal(boot().nodes.aboutSkull.textContent, '', 'the browser keeps the sentence written in index.html');
-  assert.equal(bootHost().nodes.aboutSkull.textContent, 'Your text saves to its file as you type. Click the skull to close the document; nothing is erased.');
+  assert.equal(bootHost().nodes.aboutSkull.textContent, 'The plus button starts a new document. Your text is saved to its file as you type.');
 });
 test('files drawer: a narrow row floats the drawer over the text instead of squeezing it', () => {
   const css = read('css/styles.css');
