@@ -14,6 +14,8 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Ready
 
+_Nothing queued._
+
 ## Idea
 
 - **Autism-friendly improvements.** Documented in the Docs artifact "Autism-friendly improvements for Typewrencher".
