@@ -6,7 +6,8 @@ import SwiftUI
 struct TypewrencherApp: App {
     var body: some Scene {
         DocumentGroup(newDocument: TextDocument()) { file in
-            WebEditorView(document: file.$document, name: file.fileURL?.deletingPathExtension().lastPathComponent ?? "")
+            WebEditorView(document: file.$document, name: file.fileURL?.deletingPathExtension().lastPathComponent ?? "",
+                          fileURL: file.fileURL)
                 .frame(minWidth: 480, minHeight: 360)
         }
     }
