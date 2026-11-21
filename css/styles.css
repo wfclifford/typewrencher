@@ -55,7 +55,7 @@ header { display: flex; align-items: center; justify-content: flex-end; gap: 1re
 .hint { margin: 0; color: var(--muted); font-size: 0.9rem; }
 
 /* The text sheet's row. In the Mac app the files drawer (.files-panel) can sit beside it. */
-.work { flex: 1; min-height: 0; display: flex; gap: 0.75rem; }
+.work { flex: 1; min-height: 0; display: flex; gap: 0.75rem; position: relative; container: work / inline-size; }
 .sheet {
   position: relative; flex: 1; min-width: 0; min-height: 0; display: grid; grid-template-columns: auto 1fr;
   background: var(--sheet); border: 1px solid var(--edge); border-radius: 6px; overflow: hidden;
@@ -136,6 +136,11 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
 .files-list .file[aria-current="true"]::before { opacity: 1; }
 .files-path { margin: 0; padding: 0.6rem 0.85rem; border-top: 1px solid var(--edge); color: var(--muted); font-size: 0.8rem; overflow-wrap: anywhere; }
 .files-path:empty { display: none; }
+/* When the row is too narrow for the drawer and a usable text area side by side (a small window, or
+   Settings docked beside it), the drawer floats over the text's left edge instead of squeezing it. */
+@container work (max-width: 44rem) {
+  .files-panel { position: absolute; z-index: 3; top: 0; bottom: 0; left: 0; width: min(15rem, 85%); box-shadow: 8px 0 24px rgba(0, 0, 0, .35); }
+}
 #save {
   font: 600 0.9rem/1.2 var(--sans); color: var(--count); background: var(--count-bg);
   border: 1px solid var(--edge); border-radius: 6px; padding: 0.45rem 0.85rem; cursor: pointer;

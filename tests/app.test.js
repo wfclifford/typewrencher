@@ -1854,6 +1854,15 @@ test('host: the Open button asks the native side for its Open panel instead of t
 // ---- Files drawer (Mac app only)
 const plain = v => JSON.parse(JSON.stringify(v)); // the page runs in its own realm
 const fileButtons = n => n.filesList.children.map(li => li.children[0]);
+test('About: the skull sentence says close inside the Mac app, and erase in a browser', () => {
+  assert.equal(boot().nodes.aboutSkull.textContent, '', 'the browser keeps the sentence written in index.html');
+  assert.equal(bootHost().nodes.aboutSkull.textContent, 'Your text saves to its file as you type. Click the skull to close the document; nothing is erased.');
+});
+test('files drawer: a narrow row floats the drawer over the text instead of squeezing it', () => {
+  const css = read('css/styles.css');
+  assert.match(css, /\.work \{[^}]*container: work \/ inline-size;/);
+  assert.match(css, /@container work \(max-width: 44rem\) \{\s*\.files-panel \{ position: absolute;[^}]*left: 0;/);
+});
 test('files drawer: a browser never shows the button or the drawer', () => {
   const n = boot().nodes;
   for (const id of ['filesBtn', 'filesPanel']) { assert.ok(Object.hasOwn(n[id].attrs, 'hidden'), id); assert.notEqual(n[id].hidden, false, id); }

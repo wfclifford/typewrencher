@@ -496,6 +496,8 @@
     });
   }
   if (host) {
+    // About: in the Mac app the document is a file that saves itself, and the skull closes it.
+    document.getElementById("aboutSkull").textContent = "Your text saves to its file as you type. Click the skull to close the document; nothing is erased.";
     filesBtn.hidden = false;
     filesBtn.addEventListener("click", function () { setFilesOpen(!filesOpen, true); });
     filesGrant.addEventListener("click", function () { host.post({ type: "grantFolder" }); });
