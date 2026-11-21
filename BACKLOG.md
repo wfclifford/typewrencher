@@ -14,7 +14,7 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Ready
 
-_Nothing queued._
+- **Mac app: move Open between the files drawer and New.** In the Mac app's top controls, put the Open button between the files drawer button and the "+" (New) button. The order becomes: files drawer, Open, +, name field, Export, Settings. Mac app only: browsers keep their current layout. Update tests.
 
 ## Idea
 
