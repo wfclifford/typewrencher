@@ -5,7 +5,7 @@ Typewrencher is a static web app (HTML, CSS, vanilla JS, no build step) publishe
 ## Standing decisions
 
 - Documents are plain UTF-8 `.txt` files with no per-document settings. Fonts and colors are app-wide.
-- Distribution is direct download for now (Developer ID, notarized). No App Store or TestFlight work.
+- Distribution of the Mac app is direct download for now (Developer ID, notarized). No App Store or TestFlight work for the Mac app. iPhone and iPad distribution is undecided and is being planned separately.
 - Apple platforms only, for now. Mac first; iPhone and iPad later.
 - The web files are shared: the live site is built from them. Browsers must behave as before.
 - The Mac app is a single window. The page is the editor; Swift owns files, windows and menus.
