@@ -1778,10 +1778,12 @@ test('in a browser the host bridge is off: Open and Save stay visible and no glo
   assert.equal(AppHost.create({webkit: {messageHandlers: {}}}, {}), null);
   assert.equal(AppHost.create({webkit: {messageHandlers: {typewrencher: {}}}}, {}), null, 'a handler without postMessage is not a host');
 });
-test('inside the Mac app the page hides Open but keeps the filename and .txt export, announces itself and exposes TypewrencherHost', () => {
+test('inside the Mac app the page keeps Open, the filename and .txt export, announces itself and exposes TypewrencherHost', () => {
   const b = bootHost();
   assert.equal(b.nodes.savebox.hidden, false);
-  assert.equal(b.nodes.openBtn.hidden, true);
+  assert.notEqual(b.nodes.openBtn.hidden, true);
+  assert.equal(b.nodes.openBtn.getAttribute('aria-label'), 'Open a document');
+  assert.equal(b.nodes.clearBtn.getAttribute('aria-label'), 'Close document');
   assert.deepEqual(JSON.parse(JSON.stringify(b.messages)), [{type: 'ready', protocol: 1}]); // the page runs in its own realm
   assert.equal(b.host().protocol, 1);
   for (const fn of ['setDocument', 'getText', 'exportText']) assert.equal(typeof b.host()[fn], 'function', fn);
@@ -1832,10 +1834,22 @@ test('host: exportText gives the text the native File > Export saves, with count
   assert.match(b.host().exportText(), /cat  \(1\)/);
   assert.equal(bootHost().host().exportText(), '', 'plain by default');
 });
-test('host: erasing the text is reported to the native side', () => {
-  const b = bootHost(), n = b.nodes; n.ed.value = 'a poem'; n.ed.emit('input'); b.flush(300);
-  n.clearBtn.click(); n.clearBtn.click(); b.flush(300);
-  assert.deepEqual(b.messages.at(-1), {type: 'textChanged', text: ''});
+test('host: the skull closes the document after sending unsent text, and erases nothing', () => {
+  const b = bootHost(), n = b.nodes; n.ed.value = 'a poem'; n.ed.emit('input');
+  n.clearBtn.click();
+  assert.deepEqual(JSON.parse(JSON.stringify(b.messages.slice(1))), [{type: 'textChanged', text: 'a poem'}, {type: 'close'}], 'one press, newest text first'); // the page runs in its own realm
+  assert.equal(n.ed.value, 'a poem'); assert.equal(n.clearBtn.classList.contains('armed'), false);
+  b.flush(3000); assert.equal(b.messages.length, 3);
+});
+test('host: the skull can close an empty document', () => {
+  const b = bootHost(), n = b.nodes;
+  assert.equal(n.clearBtn.getAttribute('aria-disabled'), 'false');
+  n.clearBtn.click(); assert.deepEqual(b.types(), ['ready', 'close']);
+});
+test('host: the Open button asks the native side for its Open panel instead of the file picker', () => {
+  const b = bootHost(), n = b.nodes; let picked = 0; n.openFile.click = () => picked++;
+  n.openBtn.click();
+  assert.deepEqual(b.types(), ['ready', 'open']); assert.equal(picked, 0);
 });
 test('host: dropping a file does not replace the document; the native side opens files', () => {
   const b = bootHost(), n = b.nodes; let prevented = false;
