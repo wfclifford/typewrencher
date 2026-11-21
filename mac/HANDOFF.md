@@ -61,6 +61,8 @@ If something cannot be done reliably under the sandbox or SwiftUI, say what and 
 
 ## Results
 
+Pull request: https://github.com/wfclifford/typewrencher/pull/19
+
 Run on macOS 27.2 with a Debug build, in scratch folders under `~/Developer`, checking files on disk (`cat`, `xxd`, `ls`, Spotlight for the Trash) as well as the window.
 
 ### Decision taken with the owner
