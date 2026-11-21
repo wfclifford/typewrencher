@@ -6,7 +6,7 @@ How to use it: pull `main`, read the task below, do it on a branch, then fill in
 
 ## Task: single-window app with real-file documents
 
-Status: done, in review (see Results)
+Status: done, merged (pull request 19, with its review follow-up). Waiting for the next task.
 
 Make the Mac app a SINGLE-WINDOW app in which every document is a real file from the moment it exists, and finish the web side of the same change. You own both the Swift and the web changes; they ship together in one pull request.
 
