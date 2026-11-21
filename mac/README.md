@@ -18,7 +18,7 @@ panel for the page's .txt button); the page stays the editor.
 1. Install Node.js 22 or newer (nodejs.org) if it is not installed.
 2. From the repo root, build the site into the app's folder:
    `node tools/build-site.js mac/Typewrencher/site`
-   The folder is ignored by git and is a folder reference (blue folder) in the Xcode project. **Run this again whenever the web files change**; the app only sees a copy.
+   The folder is ignored by git. In the Xcode project it sits inside the synced `Typewrencher` folder and is set to **Apply Once to Folder** (File inspector, next to Target Membership), so it is copied into the app as one folder. Applied to each file instead, Xcode flattens it and the build fails with "Multiple commands produce … CMUdict-LICENSE.txt". **Run this again whenever the web files change**; the app only sees a copy.
 3. Open `mac/Typewrencher.xcodeproj` in Xcode, choose "My Mac", and press Run.
 4. In Safari, Develop > this Mac > Typewrencher shows the page's web console (debug builds).
 
@@ -30,4 +30,11 @@ panel for the page's .txt button); the page stays the editor.
 
 ## Things to check
 
-See "First session on the Mac: what to try" in the planning brief.
+After a change to the Swift files or the bridge, run the app and check, in order:
+
+1. The page loads from `typewrencher://app/` with no Content Security Policy errors in the web console.
+2. The bridge sends `ready`: opening a `.txt` file shows its text, which the native side only sends after `ready`.
+3. Typing updates the document: the title bar shows "Edited", and the change autosaves.
+4. File > Open of a `.txt` file shows its text.
+5. Save (⌘S) writes the text back to the file.
+6. The page's `.txt` button opens a save panel, writes the export, and then shows "Done"; Cancel closes it quietly.
