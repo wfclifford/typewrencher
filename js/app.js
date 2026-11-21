@@ -110,6 +110,9 @@
   // Inside the Mac app's web view (see js/host.js) the native side owns files and saving; in a browser host is null.
   var host = typeof AppHost !== "undefined" ? AppHost.create(window, { setTimeout: setTimeout, clearTimeout: clearTimeout }) : null;
   var downloads = host ? host.downloads : null, resetTimer = null;
+  // In the Mac app the document saves itself, so this button only exports a copy and is labeled that way.
+  var saveIdleLabel = host ? "Export" : ".txt", saveIdleName = host ? "Export a copy as .txt" : "Save as .txt";
+  if (host) { saveLabel.textContent = saveIdleLabel; saveBtn.setAttribute("aria-label", saveIdleName); }
 
   // The button shows the short label; the status line and the button's accessible name carry the detail, such as "Done title.txt".
   function flash(label, detail) {
@@ -117,15 +120,31 @@
     say(detail || label);
     saveBtn.setAttribute("aria-label", detail || label);
     clearTimeout(resetTimer);
-    resetTimer = setTimeout(function () { saveLabel.textContent = ".txt"; saveBtn.setAttribute("aria-label", "Save as .txt"); }, 2500);
+    resetTimer = setTimeout(function () { saveLabel.textContent = saveIdleLabel; saveBtn.setAttribute("aria-label", saveIdleName); }, 2500);
   }
   function fileName() {
     var n = fname.value.replace(/[\u0000-\u001f\\\/:*?"<>|]/g, "").replace(/\.txt$/i, "").replace(/^[\s.]+|[\s.]+$/g, "");
     return (n || "title") + ".txt";
   }
   fname.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") { e.preventDefault(); saveBtn.click(); }
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    if (host) commitName(); else saveBtn.click();
   });
+  // Mac app only: the filename field names the document's file. Finishing an edit (Return, leaving the
+  // field, or about a second without typing) asks the native side to rename it. hostName is the name the
+  // native side last set (setDocument), so showing a document never sends a rename back.
+  var hostName = "", renameTimer = null;
+  function commitName() {
+    clearTimeout(renameTimer);
+    if (!host || fname.value === hostName) return;
+    hostName = fname.value;
+    host.post({ type: "rename", name: fname.value });
+  }
+  if (host) {
+    fname.addEventListener("input", function () { clearTimeout(renameTimer); renameTimer = setTimeout(commitName, 1000); });
+    fname.addEventListener("blur", commitName);
+  }
   function syncSave() {
     var empty = ed.value.length === 0;
     saveBtn.setAttribute("aria-disabled", String(empty));
@@ -404,7 +423,7 @@
 
   var clearLabel = document.getElementById("clearLabel");
   var clearTimer = null;
-  var clearName = host ? "Close document" : "Erase text and filename";
+  var clearName = host ? "New document" : "Erase text and filename";
   function disarm() {
     clearTimeout(clearTimer);
     clearBtn.classList.remove("armed");
@@ -420,9 +439,9 @@
     if (host) host.textChanged(ed.value); // the fallback clear sets the value without an input event
   }
   clearBtn.addEventListener("click", function () {
-    // In the Mac app the skull closes the document instead of erasing it. Unsent text goes first
-    // so the native side saves the newest version.
-    if (host) { host.flush(); host.post({ type: "close" }); return; }
+    // In the Mac app the button (a "+") starts a new document, like File > New; nothing is erased.
+    // Unsent text goes first so the native side saves the newest version of the current file.
+    if (host) { host.flush(); host.post({ type: "new" }); return; }
     if (!ed.value && !fname.value) { say("Nothing to erase."); return; }
     if (!clearBtn.classList.contains("armed")) {
       clearBtn.classList.add("armed");
@@ -497,11 +516,23 @@
   }
   if (host) {
     root.setAttribute("data-host", "mac"); // CSS shows the app's icons on Open and .txt
-    // About: in the Mac app the document is a file that saves itself, and the skull closes it.
-    document.getElementById("aboutSkull").textContent = "Your text saves to its file as you type. Click the skull to close the document; nothing is erased.";
+    // About: in the Mac app the document is a file that saves itself, and the "+" starts a new one.
+    document.getElementById("aboutSkull").textContent = "The plus button starts a new document. Your text is saved to its file as you type.";
     filesBtn.hidden = false;
     filesBtn.addEventListener("click", function () { setFilesOpen(!filesOpen, true); });
     filesGrant.addEventListener("click", function () { host.post({ type: "grantFolder" }); });
+  }
+
+  // Mac app only: the native side's messages (a failed save, a refused rename, ...) show on the notice
+  // line under the counts and are announced through the status region, instead of in an alert.
+  var hostNote = document.getElementById("hostNote"), noteTimer = null;
+  function notify(message) {
+    var text = String(message || "");
+    hostNote.textContent = text;
+    hostNote.hidden = !text;
+    if (text) say(text);
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(function () { hostNote.hidden = true; hostNote.textContent = ""; }, 12000);
   }
 
   // The native side drives the page through this object (protocol in js/host.js).
@@ -514,6 +545,7 @@
         var text = String((doc && doc.text) || "").replace(/\r\n?/g, "\n"); // same line endings as Open
         host.cancel(); // text the native side is replacing must not be sent back
         fname.value = String((doc && doc.name) || "").replace(/\.txt$/i, "");
+        clearTimeout(renameTimer); hostName = fname.value; // showing a name is not a rename
         if (text !== ed.value) {
           var start = ed.selectionStart, end = ed.selectionEnd, top = ed.scrollTop;
           ed.value = text;
@@ -526,7 +558,10 @@
         }
         syncSave();
       },
-      setFiles: showFiles
+      setFiles: showFiles,
+      notify: notify,
+      // File > Export: exactly what the Export button does, including its "Done" label.
+      exportNow: function () { saveBtn.click(); }
     };
     ed.addEventListener("blur", host.flush);
     window.addEventListener("pagehide", host.flush);

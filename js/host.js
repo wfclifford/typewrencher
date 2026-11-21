@@ -10,16 +10,21 @@
 //   page -> native, through handler.postMessage(message). The handler may reply with a promise.
 //     { type: 'ready', protocol: 1 }               the page has started and TypewrencherHost exists
 //     { type: 'textChanged', text }                the text changed; sent about 300 ms after typing stops
-//     { type: 'export', filename, data }           the page asks the native side to save a .txt file
+//     { type: 'export', filename, data }           the Export button asks the native side to save a copy as .txt
 //     { type: 'open' }                             the page's Open button: show the native Open panel
-//     { type: 'close' }                            the skull: close this document (the native side saves it first)
+//     { type: 'new' }                              the "+" (the skull in a browser): a new document, like File > New
+//     { type: 'rename', name }                     the name field was edited: rename the file (the reply is an
+//                                                  error if refused; the native side then sends the old name back)
+//     { type: 'close' }                            close the window; no longer sent by the page, still handled
 //     { type: 'files', open }                      the files drawer opened or closed; while open, send setFiles
 //     { type: 'grantFolder' }                      ask the person for access to the document's folder
 //     { type: 'openFile', name }                   switch this window to that file in the folder (saving this one)
 //   native -> page, by calling window.TypewrencherHost (defined in js/app.js)
-//     setDocument({ text, name })                  show this text and name; does not send textChanged back
+//     setDocument({ text, name })                  show this text and name; sends neither textChanged nor rename back
 //     setFiles({ access, folder, path, current, files: [{ name, modified }] })
 //                                                  the drawer's list; access is 'granted', 'needed' or 'none' (untitled)
+//     notify(message)                              show a short message on the notice line (no alerts in the app)
+//     exportNow()                                  do what the Export button does (File > Export)
 //     getText()                                    the current text
 //     exportText()                                 the text as exported: optional line counts and totals
 (() => {
