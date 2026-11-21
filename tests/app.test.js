@@ -1851,6 +1851,79 @@ test('host: the Open button asks the native side for its Open panel instead of t
   n.openBtn.click();
   assert.deepEqual(b.types(), ['ready', 'open']); assert.equal(picked, 0);
 });
+// ---- Files drawer (Mac app only)
+const plain = v => JSON.parse(JSON.stringify(v)); // the page runs in its own realm
+const fileButtons = n => n.filesList.children.map(li => li.children[0]);
+test('icons: Open and .txt show arrows on the website and a folder and a diskette in the Mac app', () => {
+  const html = read('index.html');
+  for (const id of ['openBtn', 'save']) {
+    const btn = html.match(new RegExp('<button id="' + id + '"[\\s\\S]*?</button>'))[0];
+    assert.equal((btn.match(/<svg class="icon-web"/g) || []).length, 1, id); assert.equal((btn.match(/<svg class="icon-app"/g) || []).length, 1, id);
+  }
+  assert.match(read('css/styles.css'), /html:not\(\[data-host="mac"\]\) \.icon-app, html\[data-host="mac"\] \.icon-web \{ display: none !important; \}/);
+  assert.equal(boot().document.documentElement.getAttribute('data-host'), null, 'a browser');
+  assert.equal(bootHost().document.documentElement.getAttribute('data-host'), 'mac');
+});
+test('About: the skull sentence says close inside the Mac app, and erase in a browser', () => {
+  assert.equal(boot().nodes.aboutSkull.textContent, '', 'the browser keeps the sentence written in index.html');
+  assert.equal(bootHost().nodes.aboutSkull.textContent, 'Your text saves to its file as you type. Click the skull to close the document; nothing is erased.');
+});
+test('files drawer: a narrow row floats the drawer over the text instead of squeezing it', () => {
+  const css = read('css/styles.css');
+  assert.match(css, /\.work \{[^}]*container: work \/ inline-size;/);
+  assert.match(css, /@container work \(max-width: 44rem\) \{\s*\.files-panel \{ position: absolute;[^}]*left: 0;/);
+});
+test('files drawer: a browser never shows the button or the drawer', () => {
+  const n = boot().nodes;
+  for (const id of ['filesBtn', 'filesPanel']) { assert.ok(Object.hasOwn(n[id].attrs, 'hidden'), id); assert.notEqual(n[id].hidden, false, id); }
+});
+test('files drawer: the button opens and closes it, remembers that, and tells the native side', () => {
+  const store = {}, b = bootHost(store), n = b.nodes;
+  assert.equal(n.filesBtn.hidden, false); assert.equal(n.filesBtn.getAttribute('aria-pressed'), 'false');
+  n.filesBtn.click();
+  assert.equal(n.filesPanel.hidden, false); assert.equal(n.filesBtn.getAttribute('aria-pressed'), 'true'); assert.equal(store['syl-files'], 'on');
+  n.filesBtn.click();
+  assert.equal(n.filesPanel.hidden, true); assert.equal(store['syl-files'], 'off');
+  assert.deepEqual(plain(b.messages.slice(1)), [{type: 'files', open: true}, {type: 'files', open: false}]);
+});
+test('files drawer: a remembered open drawer opens after ready, and Reset to defaults closes it', () => {
+  const b = bootHost({'syl-files': 'on'}), n = b.nodes;
+  assert.deepEqual(plain(b.messages), [{type: 'ready', protocol: 1}, {type: 'files', open: true}]);
+  assert.equal(n.filesPanel.hidden, false);
+  n.resetPrefs.click();
+  assert.equal(n.filesPanel.hidden, true); assert.deepEqual(plain(b.messages.at(-1)), {type: 'files', open: false});
+});
+test('files drawer: setFiles lists the folder, marks the open file and dates each one', () => {
+  const b = bootHost(), n = b.nodes, now = Date.now();
+  b.host().setFiles({access: 'granted', folder: 'Word Hammer', path: '~/Documents/Word Hammer', current: 'Creeps.txt',
+    files: [{name: 'Creeps.txt', modified: now}, {name: 'Tin Roof.txt', modified: now - 86400000}, {name: 'Old.txt', modified: Date.UTC(2020, 5, 15)}]});
+  assert.equal(n.filesFolder.textContent, 'Word Hammer'); assert.equal(n.filesCount.textContent, '3 files');
+  assert.equal(n.filesPath.textContent, '~/Documents/Word Hammer'); assert.equal(n.filesNote.hidden, true); assert.equal(n.filesGrant.hidden, true);
+  const btns = fileButtons(n);
+  assert.deepEqual(btns.map(x => x.children[0].textContent), ['Creeps', 'Tin Roof', 'Old'], 'names without .txt');
+  assert.deepEqual(btns.map(x => x.getAttribute('aria-current')), ['true', null, null]);
+  assert.equal(btns[1].children[1].textContent, 'Yesterday');
+  assert.match(btns[2].children[1].textContent, /2020/, 'an older year is shown');
+  b.host().setFiles({access: 'granted', folder: 'A', current: 'a.txt', files: [{name: 'a.txt', modified: now}]});
+  assert.equal(n.filesCount.textContent, '1 file'); assert.equal(fileButtons(n).length, 1, 'a new list replaces the old one');
+});
+test('files drawer: choosing another file sends unsent text, then asks to switch to it; the open file does nothing', () => {
+  const b = bootHost(), n = b.nodes;
+  b.host().setFiles({access: 'granted', folder: 'F', current: 'a.txt', files: [{name: 'a.txt', modified: 1}, {name: 'b.txt', modified: 1}]});
+  n.ed.value = 'fresh'; n.ed.emit('input');
+  fileButtons(n)[0].click(); assert.deepEqual(b.types(), ['ready'], 'the open file');
+  fileButtons(n)[1].click();
+  assert.deepEqual(plain(b.messages.slice(1)), [{type: 'textChanged', text: 'fresh'}, {type: 'openFile', name: 'b.txt'}]);
+});
+test('files drawer: without folder access it offers to ask; an untitled document says to save first', () => {
+  const b = bootHost(), n = b.nodes;
+  b.host().setFiles({access: 'needed', folder: 'Word Hammer', path: '~/Documents/Word Hammer', current: 'Creeps.txt'});
+  assert.equal(n.filesNote.hidden, false); assert.match(n.filesNote.textContent, /permission/); assert.equal(n.filesGrant.hidden, false);
+  assert.equal(fileButtons(n).length, 0); assert.equal(n.filesCount.textContent, '');
+  n.filesGrant.click(); assert.deepEqual(b.types().at(-1), 'grantFolder');
+  b.host().setFiles({access: 'none'});
+  assert.equal(n.filesFolder.textContent, 'Files'); assert.match(n.filesNote.textContent, /Save this document/); assert.equal(n.filesGrant.hidden, true);
+});
 test('host: dropping a file does not replace the document; the native side opens files', () => {
   const b = bootHost(), n = b.nodes; let prevented = false;
   n.ed.value = 'keep me'; n.ed.emit('input');

@@ -28,6 +28,8 @@ panel for the page's .txt button); the page stays the editor.
   - Open shows the native Open panel. The file replaces an empty Untitled window, or opens in a new window as with File > Open.
   - The skull closes the document (saved first, as with File > Close) instead of erasing it; the app keeps running.
   - The filename field and the `.txt` button stay, and `.txt` opens the native save panel.
+  - The files button (left of the skull) shows a drawer listing the `.txt` files in the document's folder, newest first. Choosing one saves this document and opens that file in the same window.
+- The sandbox only grants the open document, so the drawer asks once for its folder (an Open panel at that folder, "Allow Access"). `FolderFiles.swift` keeps the permission as a security-scoped bookmark, so later launches list the folder without asking. No extra entitlement is needed for this.
 - The sandbox allows User Selected File (Read/Write) and Outgoing Connections (Client). WebKit's processes need the network entitlement to start; the page's Content Security Policy still limits which hosts it can reach.
 - Keep bridge protocol 1 compatible. If it must change, update `js/host.js`, `window.TypewrencherHost` in `js/app.js` and `WebEditorView.swift` together.
 

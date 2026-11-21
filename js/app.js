@@ -443,6 +443,67 @@
   render();
   ed.focus();
 
+  // Mac app only: the files drawer lists the .txt files in the open document's folder. The native side
+  // reads the folder (after asking the person for access, the first time) and sends the list with setFiles.
+  var filesBtn = document.getElementById("filesBtn"), filesPanel = document.getElementById("filesPanel");
+  var filesFolder = document.getElementById("filesFolder"), filesCount = document.getElementById("filesCount");
+  var filesNote = document.getElementById("filesNote"), filesGrant = document.getElementById("filesGrant");
+  var filesList = document.getElementById("filesList"), filesPath = document.getElementById("filesPath");
+  var filesOpen = false;
+  function setFilesOpen(open, persist) {
+    filesOpen = open;
+    filesPanel.hidden = !open;
+    filesBtn.setAttribute("aria-pressed", String(open));
+    if (persist) store("syl-files", open ? "on" : "off");
+    host.post({ type: "files", open: open });
+  }
+  // "9:39 PM" today, "Yesterday", "Nov 18" this year, "Nov 18, 2025" before that.
+  function fileWhen(ms, now) {
+    var d = new Date(ms);
+    var days = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+    if (days === 0) return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    if (days === 1) return "Yesterday";
+    var opts = { month: "short", day: "numeric" };
+    if (d.getFullYear() !== now.getFullYear()) opts.year = "numeric";
+    return d.toLocaleDateString([], opts);
+  }
+  // state: { access: 'granted' | 'needed' | 'none', folder, path, current, files: [{ name, modified }] }
+  function showFiles(state) {
+    state = state || {};
+    var files = state.access === "granted" && Array.isArray(state.files) ? state.files : [];
+    filesFolder.textContent = state.folder || "Files";
+    filesCount.textContent = state.access === "granted" ? files.length + (files.length === 1 ? " file" : " files") : "";
+    filesPath.textContent = state.path || "";
+    filesNote.textContent = state.access === "needed" ? "Typewrencher needs your permission to list the files in this folder."
+      : state.access === "granted" ? "" : "Save this document to see the other files in its folder.";
+    filesNote.hidden = state.access === "granted";
+    filesGrant.hidden = state.access !== "needed";
+    filesList.textContent = "";
+    var now = new Date();
+    files.forEach(function (f) {
+      var name = String(f.name), item = document.createElement("li"), btn = document.createElement("button");
+      var label = document.createElement("span"), when = document.createElement("span");
+      btn.type = "button"; btn.className = "file";
+      label.className = "file-name"; label.textContent = name.replace(/\.txt$/i, "");
+      when.className = "file-when"; when.textContent = typeof f.modified === "number" ? fileWhen(f.modified, now) : "";
+      if (name === state.current) btn.setAttribute("aria-current", "true");
+      btn.addEventListener("click", function () {
+        if (name === state.current) return;
+        host.flush(); // the document being left is saved with its newest text
+        host.post({ type: "openFile", name: name });
+      });
+      btn.appendChild(label); btn.appendChild(when); item.appendChild(btn); filesList.appendChild(item);
+    });
+  }
+  if (host) {
+    root.setAttribute("data-host", "mac"); // CSS shows the app's icons on Open and .txt
+    // About: in the Mac app the document is a file that saves itself, and the skull closes it.
+    document.getElementById("aboutSkull").textContent = "Your text saves to its file as you type. Click the skull to close the document; nothing is erased.";
+    filesBtn.hidden = false;
+    filesBtn.addEventListener("click", function () { setFilesOpen(!filesOpen, true); });
+    filesGrant.addEventListener("click", function () { host.post({ type: "grantFolder" }); });
+  }
+
   // The native side drives the page through this object (protocol in js/host.js).
   if (host) {
     window.TypewrencherHost = {
@@ -464,11 +525,13 @@
           if (rhymeCtl) rhymeCtl.refresh();
         }
         syncSave();
-      }
+      },
+      setFiles: showFiles
     };
     ed.addEventListener("blur", host.flush);
     window.addEventListener("pagehide", host.flush);
     host.post({ type: "ready", protocol: host.protocol });
+    if (load("syl-files") === "on") setFilesOpen(true, false);
   }
 
   const useDictionary = document.getElementById('useCMUdict');
@@ -802,6 +865,7 @@
     applyRhymePrefs(k => d[k]);
     applyDictionary();
     if (useDictionary.checked && !loaded && !busy) loadDictionary(); else showDictionaryState();
+    if (host && filesOpen) setFilesOpen(false, false);
     render();
     say('Settings reset to defaults.');
   });

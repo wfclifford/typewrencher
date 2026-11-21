@@ -13,8 +13,13 @@
 //     { type: 'export', filename, data }           the page asks the native side to save a .txt file
 //     { type: 'open' }                             the page's Open button: show the native Open panel
 //     { type: 'close' }                            the skull: close this document (the native side saves it first)
+//     { type: 'files', open }                      the files drawer opened or closed; while open, send setFiles
+//     { type: 'grantFolder' }                      ask the person for access to the document's folder
+//     { type: 'openFile', name }                   switch this window to that file in the folder (saving this one)
 //   native -> page, by calling window.TypewrencherHost (defined in js/app.js)
 //     setDocument({ text, name })                  show this text and name; does not send textChanged back
+//     setFiles({ access, folder, path, current, files: [{ name, modified }] })
+//                                                  the drawer's list; access is 'granted', 'needed' or 'none' (untitled)
 //     getText()                                    the current text
 //     exportText()                                 the text as exported: optional line counts and totals
 (() => {

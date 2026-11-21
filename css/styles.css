@@ -54,8 +54,10 @@ header { display: flex; align-items: center; justify-content: flex-end; gap: 1re
 }
 .hint { margin: 0; color: var(--muted); font-size: 0.9rem; }
 
+/* The text sheet's row. In the Mac app the files drawer (.files-panel) can sit beside it. */
+.work { flex: 1; min-height: 0; display: flex; gap: 0.75rem; position: relative; container: work / inline-size; }
 .sheet {
-  position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: auto 1fr;
+  position: relative; flex: 1; min-width: 0; min-height: 0; display: grid; grid-template-columns: auto 1fr;
   background: var(--sheet); border: 1px solid var(--edge); border-radius: 6px; overflow: hidden;
 }
 .sheet:focus-within { outline: 2px solid var(--muted); outline-offset: 2px; }
@@ -99,6 +101,46 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
 .clear svg { width: 1.05rem; height: 1.05rem; display: block; }
 .clear[aria-disabled="true"] { opacity: 0.5; cursor: default; }
 .clear.armed { color: #fff; border-color: #e00000; background: #e00000; font-weight: 600; }
+
+/* Mac app only: the files button and the drawer listing the .txt files in the document's folder. */
+.files svg { width: 1.1rem; height: 1.1rem; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.tog.files[aria-pressed="true"] { background: var(--count); color: var(--bg); border-color: var(--count); }
+.files-panel {
+  width: 15rem; flex: none; display: flex; flex-direction: column; min-height: 0;
+  background: var(--sheet); border: 1px solid var(--edge); border-radius: 6px; overflow: hidden;
+}
+.files-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem;
+  padding: 0.7rem 0.85rem; border-bottom: 1px solid var(--edge);
+}
+.files-folder { margin: 0; font-size: 1rem; color: var(--count); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.files-count { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.files-note { margin: 0; padding: 0.85rem; color: var(--muted); font-size: 0.9rem; }
+.files-grant { margin: 0 0.85rem 0.85rem; align-self: flex-start; padding: 0.35rem 0.75rem; }
+.files-list { list-style: none; margin: 0; padding: 0.35rem; overflow: auto; flex: 1; min-height: 0; }
+.files-list .file {
+  display: grid; grid-template-columns: 1rem 1fr auto; align-items: center; gap: 0.5rem; width: 100%;
+  padding: 0.45rem 0.55rem; border: 0; border-radius: 5px; background: transparent; color: var(--ink);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.files-list .file::before {
+  content: ""; width: 1rem; height: 1rem; background: currentColor; opacity: 0.7;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z M14 2v5h5'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z M14 2v5h5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-when { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
+.files-list .file:hover { background: color-mix(in srgb, var(--count) 12%, transparent); }
+.files-list .file:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.files-list .file[aria-current="true"], .files-list .file[aria-current="true"] .file-when { background: var(--count); color: var(--bg); font-weight: 600; cursor: default; }
+.files-list .file[aria-current="true"]::before { opacity: 1; }
+.files-path { margin: 0; padding: 0.6rem 0.85rem; border-top: 1px solid var(--edge); color: var(--muted); font-size: 0.8rem; overflow-wrap: anywhere; }
+.files-path:empty { display: none; }
+/* When the row is too narrow for the drawer and a usable text area side by side (a small window, or
+   Settings docked beside it), the drawer floats over the text's left edge instead of squeezing it. */
+@container work (max-width: 44rem) {
+  .files-panel { position: absolute; z-index: 3; top: 0; bottom: 0; left: 0; width: min(15rem, 85%); box-shadow: 8px 0 24px rgba(0, 0, 0, .35); }
+}
 #save {
   font: 600 0.9rem/1.2 var(--sans); color: var(--count); background: var(--count-bg);
   border: 1px solid var(--edge); border-radius: 6px; padding: 0.45rem 0.85rem; cursor: pointer;
@@ -110,6 +152,9 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
 #save[aria-disabled="true"] { opacity: 0.5; cursor: default; }
 .open { display: inline-flex; align-items: center; justify-content: center; }
 .open svg { width: 1.05rem; height: 1.05rem; display: block; }
+/* Each of Open and .txt carries two icons: arrows on the website, an open folder and a diskette in the
+   Mac app (js/app.js sets data-host="mac" on the root there). */
+html:not([data-host="mac"]) .icon-app, html[data-host="mac"] .icon-web { display: none !important; }
 .savebox { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .fname { display: flex; align-items: baseline; gap: 0.25rem; color: var(--muted); font-size: 0.9rem; }
 #fname {
@@ -1062,6 +1107,7 @@ html:not(.kb) .rhyme-panel { border: 0; border-top: 1px solid var(--rule); borde
    least three lines, and the Rhymes panel is one row of chips just above the keyboard. */
 html.kb .app { position: fixed; left: 0; right: 0; top: var(--vvt, 0px); width: 100%; height: var(--vvh, 100%); padding-bottom: 0.4rem; }
 html.kb .sheet { min-height: calc(var(--lh) * 3 + var(--pad) * 2); }
+html.kb .work { min-height: calc(var(--lh) * 3 + var(--pad) * 2); } /* the sheet's row keeps room for it */
 html.kb .dict-row { display: none; }
 /* Rhymes with the keyboard open: one bordered card. The header line holds "Rhymes · word · count" and the label of the syllable
    group at the left edge (app.js keeps it current); under it, the chips. Short screens get one row of chips that scrolls sideways;

@@ -16,33 +16,43 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/styles.css?v=c4e0d24316">
+<link rel="stylesheet" href="css/styles.css?v=bbfb2d264f">
 </head>
 <body>
 <main class="app">
   <h1 class="sr">Typewrencher™</h1>
   <div id="status" class="sr" role="status" aria-live="polite" aria-atomic="true"></div>
   <header>
+    <button id="filesBtn" type="button" class="tog files" aria-pressed="false" aria-controls="filesPanel" aria-label="Files in this folder" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M5.5 8h1.5M5.5 11h1.5M5.5 14h1.5"/></svg></button>
     <button id="clearBtn" type="button" class="tog clear" aria-label="Erase text and filename" aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M12 2a9 9 0 0 0-9 9c0 2.8 1.3 5 3.3 6.2V19.5A1.5 1.5 0 0 0 7.8 21h8.4a1.5 1.5 0 0 0 1.5-1.5v-2.3C19.7 16 21 13.8 21 11a9 9 0 0 0-9-9zM8.5 8.8a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 1 0 0-4.4zM15.5 8.8a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 1 0 0-4.4zM12 13.2l1.3 2.4h-2.6zM10.3 17.4h.9V21h-.9z M12.8 17.4h.9V21h-.9z"/></svg><span id="clearLabel"></span></button>
     <div class="actions">
       <div class="savebox" id="savebox" hidden>
-        <button id="openBtn" type="button" class="tog open" aria-label="Open a .txt file"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 16V4M7 9l5-5 5 5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button id="openBtn" type="button" class="tog open" aria-label="Open a .txt file"><svg class="icon-web" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 16V4M7 9l5-5 5 5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="icon-app" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 18V6a1 1 0 0 1 1-1h5l2 2h7a1 1 0 0 1 1 1v2M3 18l2.6-7.2a1 1 0 0 1 .9-.8H21a.7.7 0 0 1 .7.9L19.3 18.3a1 1 0 0 1-.9.7H4a1 1 0 0 1-1-1Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <input id="openFile" type="file" accept=".txt,text/plain" hidden tabindex="-1">
         <label class="fname"><span class="fname-text">Save as</span>
           <input id="fname" name="export-title" type="text" maxlength="80" placeholder="filename" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-form-type="other">
         </label>
-        <button id="save" type="button" aria-label="Save as .txt"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v12M7 11l5 5 5-5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="saveLabel">.txt</span></button>
+        <button id="save" type="button" aria-label="Save as .txt"><svg class="icon-web" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v12M7 11l5 5 5-5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="icon-app" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 3h11l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a1 1 0 0 1 1-1ZM8 3v5h7V3M7 21v-6a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="saveLabel">.txt</span></button>
       </div>
     </div>
     <button id="moreBtn" type="button" class="more" aria-haspopup="dialog" aria-expanded="false" aria-controls="morePanel" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M9.60 4.16 L10.18 1.66 L13.82 1.66 L14.40 4.16 L15.85 4.76 L18.02 3.40 L20.60 5.98 L19.24 8.15 L19.84 9.60 L22.34 10.18 L22.34 13.82 L19.84 14.40 L19.24 15.85 L20.60 18.02 L18.02 20.60 L15.85 19.24 L14.40 19.84 L13.82 22.34 L10.18 22.34 L9.60 19.84 L8.15 19.24 L5.98 20.60 L3.40 18.02 L4.76 15.85 L4.16 14.40 L1.66 13.82 L1.66 10.18 L4.16 9.60 L4.76 8.15 L3.40 5.98 L5.98 3.40 L8.15 4.76Z M8.6 12 a3.4 3.4 0 1 0 6.8 0 a3.4 3.4 0 1 0 -6.8 0Z"/></svg><span id="moreBadge" class="badge" aria-hidden="true" hidden>!</span></button>
   </header>
 
-  <div class="sheet">
-    <div id="measure" aria-hidden="true"></div>
-    <div id="gutter"><div id="counts" role="list" aria-label="Syllables per line"></div></div>
-    <textarea id="ed" name="syllable-text" class="wrap" wrap="soft" autocomplete="off" data-1p-ignore data-lpignore="true" data-form-type="other" spellcheck="true" aria-label="Text to count"
-      placeholder="Type or paste, or open a .txt file."></textarea>
-    <div id="hl" aria-hidden="true"></div>
+  <div class="work">
+    <aside id="filesPanel" class="files-panel" aria-labelledby="filesFolder" hidden>
+      <div class="files-head"><h2 id="filesFolder" class="files-folder">Files</h2><span id="filesCount" class="files-count"></span></div>
+      <p id="filesNote" class="files-note" hidden></p>
+      <button id="filesGrant" type="button" class="tog files-grant" hidden>Allow access</button>
+      <ul id="filesList" class="files-list"></ul>
+      <p id="filesPath" class="files-path"></p>
+    </aside>
+    <div class="sheet">
+      <div id="measure" aria-hidden="true"></div>
+      <div id="gutter"><div id="counts" role="list" aria-label="Syllables per line"></div></div>
+      <textarea id="ed" name="syllable-text" class="wrap" wrap="soft" autocomplete="off" data-1p-ignore data-lpignore="true" data-form-type="other" spellcheck="true" aria-label="Text to count"
+        placeholder="Type or paste, or open a .txt file."></textarea>
+      <div id="hl" aria-hidden="true"></div>
+    </div>
   </div>
 
   <section class="rhyme-dock" id="rhymeDock" aria-label="Rhymes" hidden>
@@ -87,7 +97,7 @@
       <div class="acc-body">
         <p>Typewrencher wrenches words.</p> 
         <p>Type, paste, or upload a text file. Each line shows its syllable count in the margin. <i class="flag" role="img" aria-label="tilde">~</i> means a word was estimated; <i class="flag" role="img" aria-label="plus-minus">&plusmn;</i> means it has more than one common pronunciation.</p>
-        <p>There is no Save, only Export! Tap the skull or refresh your browser to erase the text and filename.</p>
+        <p><span id="aboutSkull">There is no Save, only Export! Tap the skull or refresh your browser to erase the text and filename.</span></p>
         <p>Counts and rhymes come from CMUdict, a pronunciation dictionary, plus additions for words whose syllable count varies. Words in neither list are estimated. Dictionary Options below contain the dictionary controls for syllables and rhymes and the full CMUdict license.</p>
         <p><strong>ABSOLUTELY NO WARRANTY. USE AT YOUR OWN RISK. MAKE A BETTER VERSION YOURSELF.</strong></p>
         <p>Typewrencher™</p>
@@ -251,16 +261,16 @@
 </dialog>
 
 <script defer src="js/license.js?v=874a19f480"></script>
-<script defer src="js/version.js?v=f29c347cb9"></script>
-<script defer src="js/preferences.js?v=089560d5dc"></script>
+<script defer src="js/version.js?v=f7b2fa7baa"></script>
+<script defer src="js/preferences.js?v=a9d3c1cde2"></script>
 <script defer src="js/counter.js?v=12a5bf54da"></script>
 <script defer src="js/rhymes.js?v=923679a75b"></script>
 <script defer src="js/mirror.js?v=302da1e7fd"></script>
 <script defer src="js/rhymes-ui.js?v=2453d3dfd2"></script>
 <script defer src="js/dictionary.js?v=96c3c5f5fe"></script>
-<script defer src="js/host.js?v=24c3a71e61"></script>
+<script defer src="js/host.js?v=c8ad02a2fe"></script>
 <script defer src="js/editor.js?v=12d01ab137"></script>
 <script defer src="js/dialogs.js?v=6e6803ddbf"></script>
-<script defer src="js/app.js?v=342b4a0dda"></script>
+<script defer src="js/app.js?v=5721b4dc92"></script>
 </body>
 </html>

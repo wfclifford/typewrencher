@@ -5,7 +5,8 @@
     'syl-tone': 'terminal', 'syl-theme': 'dark', 'syl-font': 'mono',
     'syl-textsize': '2', 'syl-wrap': 'on', 'syl-counts': 'off',
     'syl-totals': 'off', 'syl-cmudict-enabled': 'on', 'syl-supplement': 'on', 'syl-rhymes': 'off',
-    'syl-rhymes-open': 'on', 'syl-rhymes-type': 'perfect', 'syl-rhymes-include-rich': 'off'
+    'syl-rhymes-open': 'on', 'syl-rhymes-type': 'perfect', 'syl-rhymes-include-rich': 'off',
+    'syl-files': 'off' // Mac app only: the files drawer beside the text
   });
   const options = {
     'syl-tone': ['grey', 'cool', 'warm', 'terminal', 'amber', 'hc-bw', 'hc-yellow', 'eink'],
@@ -14,7 +15,7 @@
     'syl-rhymes-type': ['perfect', 'near'],
     'syl-textsize': ['0', '1', '2', '3', '4', '5', '6']
   };
-  for (const key of ['syl-wrap', 'syl-counts', 'syl-totals', 'syl-cmudict-enabled', 'syl-supplement', 'syl-rhymes', 'syl-rhymes-open', 'syl-rhymes-include-rich']) {
+  for (const key of ['syl-wrap', 'syl-counts', 'syl-totals', 'syl-cmudict-enabled', 'syl-supplement', 'syl-rhymes', 'syl-rhymes-open', 'syl-rhymes-include-rich', 'syl-files']) {
     options[key] = ['on', 'off'];
   }
   globalThis.AppPreferences = {
