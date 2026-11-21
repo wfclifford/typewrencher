@@ -1854,6 +1854,16 @@ test('host: the Open button asks the native side for its Open panel instead of t
 // ---- Files drawer (Mac app only)
 const plain = v => JSON.parse(JSON.stringify(v)); // the page runs in its own realm
 const fileButtons = n => n.filesList.children.map(li => li.children[0]);
+test('icons: Open and .txt show arrows on the website and a folder and a diskette in the Mac app', () => {
+  const html = read('index.html');
+  for (const id of ['openBtn', 'save']) {
+    const btn = html.match(new RegExp('<button id="' + id + '"[\\s\\S]*?</button>'))[0];
+    assert.equal((btn.match(/<svg class="icon-web"/g) || []).length, 1, id); assert.equal((btn.match(/<svg class="icon-app"/g) || []).length, 1, id);
+  }
+  assert.match(read('css/styles.css'), /html:not\(\[data-host="mac"\]\) \.icon-app, html\[data-host="mac"\] \.icon-web \{ display: none !important; \}/);
+  assert.equal(boot().document.documentElement.getAttribute('data-host'), null, 'a browser');
+  assert.equal(bootHost().document.documentElement.getAttribute('data-host'), 'mac');
+});
 test('About: the skull sentence says close inside the Mac app, and erase in a browser', () => {
   assert.equal(boot().nodes.aboutSkull.textContent, '', 'the browser keeps the sentence written in index.html');
   assert.equal(bootHost().nodes.aboutSkull.textContent, 'Your text saves to its file as you type. Click the skull to close the document; nothing is erased.');

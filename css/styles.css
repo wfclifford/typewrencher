@@ -152,6 +152,9 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
 #save[aria-disabled="true"] { opacity: 0.5; cursor: default; }
 .open { display: inline-flex; align-items: center; justify-content: center; }
 .open svg { width: 1.05rem; height: 1.05rem; display: block; }
+/* Each of Open and .txt carries two icons: arrows on the website, an open folder and a diskette in the
+   Mac app (js/app.js sets data-host="mac" on the root there). */
+html:not([data-host="mac"]) .icon-app, html[data-host="mac"] .icon-web { display: none !important; }
 .savebox { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .fname { display: flex; align-items: baseline; gap: 0.25rem; color: var(--muted); font-size: 0.9rem; }
 #fname {

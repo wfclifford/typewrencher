@@ -496,6 +496,7 @@
     });
   }
   if (host) {
+    root.setAttribute("data-host", "mac"); // CSS shows the app's icons on Open and .txt
     // About: in the Mac app the document is a file that saves itself, and the skull closes it.
     document.getElementById("aboutSkull").textContent = "Your text saves to its file as you type. Click the skull to close the document; nothing is erased.";
     filesBtn.hidden = false;
