@@ -10,6 +10,13 @@ Typewrencher is a static web app (HTML, CSS, vanilla JS, no build step) publishe
 - The web files are shared: the live site is built from them. Browsers must behave as before.
 - The Mac app is a single window. The page is the editor; Swift owns files, windows and menus.
 
+## Design principles
+
+- Focused writing environment: a main goal on every platform. Keep people inside the UI whenever possible.
+- No `alert()` or `confirm()` dialogs, no new tabs or windows, and no sending people to settings or docs elsewhere. In the Mac app that also means no `NSAlert` or error sheets: feedback is inline (button labels, the status line, the drawer), never a modal or a toast.
+- Accessibility fixes live in the app, not in instructions for changing browser settings.
+- Exits from the writing surface (the iOS share sheet for export, the native file panels on the Mac) are accepted only because the platform needs them. New features that leave the writing surface face a higher bar.
+
 ## Bridge protocol 1 (`js/host.js`, `window.TypewrencherHost` in `js/app.js`)
 
 Keep it compatible. New messages may be added, but existing ones keep their shape. When a message is added or changed, update the header comment in `js/host.js`, the Swift handler in `mac/Typewrencher/WebEditorView.swift` and the tests in the same change.
