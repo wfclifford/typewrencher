@@ -4,13 +4,23 @@ This file is how the planning chat and the coding session pass work to each othe
 
 How to use it: pull `main`, read the task below, do it on a branch, then fill in Results in the same branch and open a pull request. Do not merge it.
 
-## Task: lock Rhymes height, and width selector
+## Task: check the Rhymes lock, page width and rhyme mark in the Mac app
 
-Status: the web side is done (pull request: "Lock Rhymes height and page width"). Your part is to check it in the running Mac app and fix only what is broken there. The rest of this task describes what was built.
+Status: the web side is done and released (site release 0.1.20: Lock Rhymes height, Page width, the rhyme mark change, and the e-ink fix). Your part is to check it in the running Mac app and fix only what is broken there. Nothing in this task changes the bridge.
 
-Two web settings. Both are site files, so merging counts as a release; follow the web rules in `CLAUDE.md` (stamp, check, tests; then rebuild the Mac site copy). The backlog has both items under Ready. Mocks were shown in the planning chat: Rhymes lock (panel keeps full height with few rhymes so the editor stops jumping) and Narrow / Standard / Wide page widths.
+Steps:
 
-Both settings are app-wide and per-device, stored like the other settings (`store("syl-...")` in `js/app.js`). Neither needs a bridge change. No new dependencies.
+1. Pull `main`, run `node tools/build-site.js mac/Typewrencher/site`, then build and run the app.
+2. Check each item below in the running app and report what you observed:
+   a. **Page width.** Settings drawer, Display Options: "Page width" (Narrow, Standard, Wide) sits under "Wrap long lines", with its label on the same row as the buttons. At a wide window each step changes the page width and the syllable gutter stays aligned with its lines, with wrapping on and off. At a narrow window (under 800px) the control is hidden.
+   b. **Lock Rhymes height.** Settings drawer, Dictionary Options: turn on "Show rhymes". "Lock Rhymes height" appears under "Show rhymes" and above "Include near rhymes". With it on, the open Rhymes panel keeps the same height even with few or no rhymes, and the editor above it does not move while typing. It is off by default, and "Reset to defaults" turns it off.
+   c. **Rhyme mark.** With Show rhymes on, put the cursor in a word. In retro_term, retro_amber, B&W and High contrast the marked word is an outline with a thick underline, and the block cursor (retro_term and retro_amber) is the only solid cell, including when it sits inside the marked word. In e-ink (light and dark) the marked word is a soft shade. In Grey, Warm and Cool it is a soft tint.
+   d. Both settings persist after quitting and relaunching the app.
+   e. The header order is still: files drawer, Open, +, name field, Export, Settings.
+3. Do not claim anything you did not run on the Mac. If a check fails, report the exact observation, then fix it on a branch (web fixes follow the web rules in `CLAUDE.md`).
+4. Fill in Results below on the same branch, push, open a pull request, and do not merge.
+
+### Reference: what was built (web, already released)
 
 ### 1. Lock Rhymes height
 
@@ -33,7 +43,6 @@ Both settings are app-wide and per-device, stored like the other settings (`stor
 - Update the README settings list if it lists settings.
 - Check all themes, and phone and tablet sizes in the browser; the keyboard-open layout can only be confirmed on a real iPhone, so say that is untested.
 - Browsers keep working as before; the Mac app picks it up through the site copy, so run the build-site command and check both settings in the running app.
-- When done, move both items in `BACKLOG.md` from Ready to Testing, fill in Results below, push, open a pull request, and do not merge.
 
 ## Results
 
