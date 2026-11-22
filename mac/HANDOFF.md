@@ -6,7 +6,9 @@ How to use it: pull `main`, read the task below, do it on a branch, then fill in
 
 ## Task: lock Rhymes height, and width selector
 
-Status: ready. Two web settings. Both are site files, so merging counts as a release; follow the web rules in `CLAUDE.md` (stamp, check, tests; then rebuild the Mac site copy). The backlog has both items under Ready. Mocks were shown in the planning chat: Rhymes lock (panel keeps full height with few rhymes so the editor stops jumping) and Narrow / Standard / Wide page widths.
+Status: the web side is done (pull request: "Lock Rhymes height and page width"). Your part is to check it in the running Mac app and fix only what is broken there. The rest of this task describes what was built.
+
+Two web settings. Both are site files, so merging counts as a release; follow the web rules in `CLAUDE.md` (stamp, check, tests; then rebuild the Mac site copy). The backlog has both items under Ready. Mocks were shown in the planning chat: Rhymes lock (panel keeps full height with few rhymes so the editor stops jumping) and Narrow / Standard / Wide page widths.
 
 Both settings are app-wide and per-device, stored like the other settings (`store("syl-...")` in `js/app.js`). Neither needs a bridge change. No new dependencies.
 
