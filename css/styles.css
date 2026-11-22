@@ -1150,7 +1150,6 @@ html.kb .rhyme-hint, html.kb .rhyme-more { display: none; }
 @media (prefers-reduced-motion: reduce) { #hl .bc { animation: none; } }
 
 /* Page width (wide windows only; Standard is the original 62rem). The control is hidden below 800px, and the setting only applies there too. */
-#widthOpt { margin-top: .6rem; }
 @media (max-width: 799px) { #widthOpt { display: none; } }
 @media (min-width: 800px) {
   :root[data-width="narrow"] { --page-w: 44rem; }
