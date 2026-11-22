@@ -907,7 +907,7 @@
   function wordReport(kind) {
     const found = new Map();
     ed.value.split('\n').forEach((text, i) => {
-      const tokens = text.normalize('NFC').replace(/[\u2019\u2018]/g, "'").match(/\p{L}+(?:'\p{L}+)*/gu) || [];
+      const tokens = counter.visible(text).match(/\p{L}+(?:'\p{L}+)*/gu) || [];
       tokens.forEach(token => {
         const r = counter.word(token);
         if (!(kind === 'estimated' ? r.estimated : r.variable)) return;

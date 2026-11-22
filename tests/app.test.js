@@ -204,6 +204,15 @@ test('lookup and cache invalidation', () => {
   assert.deepEqual(c.line('hello fire zorb'), {n:4,words:3,estimated:1,variable:1});
   c.setDictionary(null); assert.equal(c.word('hello').estimated, true);
 });
+test('bracketed notes are left out of line and word counts', () => {
+  const c = SyllableCounter.create(); c.setDictionary({hello:[2], fire:[1,2], chorus:[2], love:[1]});
+  assert.deepEqual(c.line('[Chorus]'), {n:0,words:0,estimated:0,variable:0});
+  assert.deepEqual(c.line('hello [chorus] love [x2]'), c.line('hello love'));
+  assert.equal(c.line('hello[chorus]love').words, 2);
+  assert.equal(c.line('hello [unclosed love').words, 3, 'a stray bracket changes nothing');
+  assert.equal(c.line('hello (chorus) love').words, 3, 'parentheses still count');
+  assert.equal(c.visible('a [b [c] d] e').includes('c'), false);
+});
 test('parser orders alternate pronunciations', async () => {
   const d = await SyllableCounter.parse('fire(2) F AY1 ER0\nfire F AY1 R\n'); assert.deepEqual(d.fire, [1,2]);
 });

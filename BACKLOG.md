@@ -14,9 +14,13 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Ready
 
+_Nothing queued._
 
 ## Idea
 
+- **Lyrics: section awareness.** Builds on the bracket rule (shipped). Treat `[Verse]`, `[Chorus]` or `Bridge:` lines as stanza starts and show a syllable subtotal per section. Plain text only.
+- **Lyrics: line-match view.** Compare verse 2 to verse 1 line by line and flag lines whose syllable counts differ, so lyrics fit the same melody. Uses sections.
+- **Lyrics: internal rhyme highlighting.** Link matching sounds inside and across lines. Related to the alliteration and assonance idea below.
 - **Syllable targets per line.** Pick a form (haiku 5-7-5, tanka, limerick, or a custom count) and the gutter shows whether each line is on target, short or over. Builds on the existing line counts; forms live in a small list in settings. Stays inside the editor.
 - **Rhyme scheme labels.** Letters in the margin (A, B, C) showing the scheme, such as ABAB or AABB, found by matching line endings with the rhyme engine. Computed on the device. Needs the rhyme dictionary loaded; decide what to show when it is off (the mockup hides the column). Mockup: a small letter badge beside each line's syllable count, same letter for lines that rhyme, letters distinguished by style as well as color (filled, outlined, tinted), a dim dot for a line with no rhyme partner, and a one-line scheme summary under the editor (for example ABAB). Mocked in the planning chat; not built.
 - **Stress and meter.** CMUdict marks stressed syllables, so a line's stress pattern could be shown and checked against a meter such as iambic pentameter. The most ambitious idea. Needs care with words that have several pronunciations (the app already marks those "variable").
