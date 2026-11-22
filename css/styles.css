@@ -156,6 +156,10 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
 .files-list li.armed .file-trash { opacity: 1; color: #fff; background: #e00000; border-color: #e00000; font-weight: 600; }
 .files-list li.armed .file-when { display: none; }
 .files-list li.armed .file { padding-right: 5.8rem; } /* the name shortens with an ellipsis instead of sitting under the button */
+/* The Moved to the Trash bar sits at the top of the drawer, so it never moves the text area. */
+.files-panel .trash-bar { margin: 0; border: 0; border-bottom: 1px solid var(--edge); border-radius: 0; background: transparent; padding: 0.55rem 0.85rem; font-size: 0.85rem; }
+.files-panel .trash-bar span { flex: 1 0 100%; overflow-wrap: anywhere; }
+.files-panel .trash-bar .tog { padding: 0.2rem 0.6rem; }
 .files-path { margin: 0; padding: 0.6rem 0.85rem; border-top: 1px solid var(--edge); color: var(--muted); font-size: 0.8rem; overflow-wrap: anywhere; }
 .files-path:empty { display: none; }
 /* When the row is too narrow for the drawer and a usable text area side by side (a small window, or
