@@ -2061,10 +2061,10 @@ test('trash: an Undo that fails (a file with that name exists now) says so inlin
   trashBtn(n, 1).click(); trashBtn(n, 1).click(); await settle(); n.trashUndo.click(); await settle();
   assert.match(n.trashMsg.textContent, /^Couldn\u2019t restore \u201cMy Poem\u201d: a file with that name is in the folder now\.$/); assert.equal(n.trashUndo.hidden, true);
 });
-test('trash: markup (a bar next to the strip bar, labelled buttons), styles, and browsers are unchanged', () => {
+test('trash: markup (a bar at the top of the drawer, labelled buttons), styles, and browsers are unchanged', () => {
   const html = read('index.html'), css = read('css/styles.css');
-  assert.ok(html.indexOf('id="stripBar"') < html.indexOf('id="trashBar"') && html.indexOf('id="trashBar"') < html.indexOf('class="work"'), 'the bar sits under the header');
-  assert.match(html, /<div id="trashBar" class="strip-bar" role="group" aria-label="Moved to the Trash" hidden>/);
+  assert.ok(html.indexOf('id="filesPanel"') < html.indexOf('id="trashBar"') && html.indexOf('id="trashBar"') < html.indexOf('id="filesFolder"'), 'the bar sits at the top of the drawer, so the text area does not move');
+  assert.match(html, /<div id="trashBar" class="strip-bar trash-bar" role="group" aria-label="Moved to the Trash" hidden>/);
   assert.match(css, /\.files-list li:hover \.file-trash, \.files-list li:has\(:focus-visible\) \.file-trash \{ opacity: 1; \}/);
   assert.match(css, /\.files-list li\.armed \.file \{ padding-right:/, 'an armed row shortens the name');
   assert.match(css, /\.file-trash:focus-visible \{ outline:/);
