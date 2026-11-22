@@ -2072,3 +2072,42 @@ test('release number counts merges on main that changed a site file, and needs f
   assert.throws(() => releaseNumber(shallow, ['index.html']), /shallow/);
   assert.throws(() => releaseNumber(fs.mkdtempSync(path.join(os.tmpdir(), 'rel-none-')), ['index.html']), /Cannot count releases/);
 });
+test('Lock Rhymes height: switch sits under Show rhymes and above Include near rhymes; off by default; saved and reset', async () => {
+  const html = read('index.html'), pos = s => html.indexOf(s);
+  assert.ok(pos('id="rhymesEnabled"') < pos('id="rhymeLock"') && pos('id="rhymeLock"') < pos('id="rhymeNear"'), 'order: Show rhymes, Lock Rhymes height, Include near rhymes');
+  assert.ok(pos('id="rhymeLock"') > pos('<div id="rhymeOptions"'), 'inside the options that show only when Rhymes is on');
+  assert.match(html, /<input id="rhymeLock" type="checkbox" role="switch"/); assert.match(html, /Lock Rhymes height/);
+  const store = {}, {b} = rhymeApp(store), n = b.nodes; await settle();
+  assert.equal(n.rhymeLock.checked, false); assert.equal(b.document.documentElement.getAttribute('data-rhymes-lock'), null);
+  n.rhymeLock.checked = true; n.rhymeLock.emit('change');
+  assert.equal(b.document.documentElement.getAttribute('data-rhymes-lock'), 'on'); assert.equal(store['syl-rhymes-lock'], 'on');
+  n.resetPrefs.click(); await settle();
+  assert.equal(n.rhymeLock.checked, false); assert.equal(b.document.documentElement.getAttribute('data-rhymes-lock'), null); assert.equal(store['syl-rhymes-lock'], 'off');
+  const again = rhymeApp({'syl-rhymes-lock': 'on'}); await settle();
+  assert.equal(again.b.document.documentElement.getAttribute('data-rhymes-lock'), 'on', 'a saved lock is restored');
+});
+test('Lock Rhymes height CSS: tall desktop size, tall keyboard layout only, never the short one-row layout', () => {
+  const css = read('css/styles.css');
+  assert.match(css, /html\[data-rhymes-lock="on"\]:not\(\.kb\) \.rhyme-panel:not\(\[hidden\]\) \{[^}]*height: 9rem/);
+  assert.match(css, /html\.kb\.kb-tall\[data-rhymes-lock="on"\] \.rhyme-panel:not\(\[hidden\]\) \{[^}]*height: 4\.7rem/);
+  assert.doesNotMatch(css, /html\.kb\[data-rhymes-lock="on"\] /);
+});
+test('Page width: control sits under Wrap long lines; Standard default; saved, applied and reset; hidden on narrow windows', () => {
+  const html = read('index.html'), pos = s => html.indexOf(s);
+  assert.ok(pos('id="wrapToggle"') < pos('id="widthOpt"') && pos('id="widthOpt"') < pos('id="exportAcc"'), 'under Wrap long lines, inside Display Options');
+  for (const w of ['narrow', 'standard', 'wide']) assert.match(html, new RegExp(`data-width-choice="${w}"`));
+  const css = read('css/styles.css');
+  assert.match(css, /max-width: var\(--page-w, 62rem\)/);
+  assert.match(css, /@media \(max-width: 799px\) \{ #widthOpt \{ display: none; \} \}/);
+  assert.match(css, /@media \(min-width: 800px\) \{[^@]*data-width="narrow"[^@]*data-width="wide"/);
+  assert.equal(AppPreferences.create(null).get('syl-width'), 'standard');
+  assert.equal(AppPreferences.create({getItem: () => 'huge'}).get('syl-width'), 'standard');
+  const saved = {}, b = boot(saved), root = b.document.documentElement, btn = w => b.document.querySelectorAll('[data-width-choice]').find(e => e.getAttribute('data-width-choice') === w);
+  assert.equal(root.getAttribute('data-width'), null); assert.equal(btn('standard').getAttribute('aria-pressed'), 'true');
+  btn('wide').click();
+  assert.equal(root.getAttribute('data-width'), 'wide'); assert.equal(saved['syl-width'], 'wide'); assert.equal(btn('wide').getAttribute('aria-pressed'), 'true'); assert.equal(btn('standard').getAttribute('aria-pressed'), 'false');
+  b.nodes.resetPrefs.click();
+  assert.equal(root.getAttribute('data-width'), null); assert.equal(saved['syl-width'], 'standard');
+  const restored = boot({'syl-width': 'narrow'});
+  assert.equal(restored.document.documentElement.getAttribute('data-width'), 'narrow');
+});

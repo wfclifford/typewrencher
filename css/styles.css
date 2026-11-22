@@ -43,7 +43,7 @@ body {
   font-family: var(--sans);
 }
 .app {
-  height: 100%; max-width: 62rem; margin: 0 auto;
+  height: 100%; max-width: var(--page-w, 62rem); margin: 0 auto;
   padding: 1rem 1rem 0.75rem; display: flex; flex-direction: column; gap: 0.75rem;
 }
 header { display: flex; align-items: center; justify-content: flex-end; gap: 1rem; flex-wrap: wrap; }
@@ -1148,3 +1148,14 @@ html.kb .rhyme-hint, html.kb .rhyme-more { display: none; }
 #hl .bc.eol::after { content: ""; position: absolute; left: 0; top: 0; width: 0.6em; height: 1.2em; background: var(--ink); }
 #hl mark .bc { background: var(--bg); color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { #hl .bc { animation: none; } }
+
+/* Page width (wide windows only; Standard is the original 62rem). The control is hidden below 800px, and the setting only applies there too. */
+#widthOpt { margin-top: .6rem; }
+@media (max-width: 799px) { #widthOpt { display: none; } }
+@media (min-width: 800px) {
+  :root[data-width="narrow"] { --page-w: 44rem; }
+  :root[data-width="wide"] { --page-w: 84rem; }
+}
+/* Lock Rhymes height: keep the open panel at its tallest size. Short keyboard-open screens (kb without kb-tall) stay one row. */
+html[data-rhymes-lock="on"]:not(.kb) .rhyme-panel:not([hidden]) { box-sizing: border-box; height: 9rem; }
+html.kb.kb-tall[data-rhymes-lock="on"] .rhyme-panel:not([hidden]) { box-sizing: border-box; height: 4.7rem; }

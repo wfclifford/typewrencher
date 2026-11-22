@@ -316,6 +316,18 @@
   });
   window.addEventListener("resize", function () { if (wrapOn) render(); });
   setWrap(load("syl-wrap") !== "off");
+  var widthBtns = document.querySelectorAll("[data-width-choice]");
+  function setWidth(w) {
+    if (w === "narrow" || w === "wide") root.setAttribute("data-width", w); else { w = "standard"; root.removeAttribute("data-width"); }
+    widthBtns.forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-width-choice") === w ? "true" : "false"); });
+  }
+  widthBtns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      var choice = b.getAttribute("data-width-choice");
+      setWidth(choice); store("syl-width", choice); render();
+    });
+  });
+  setWidth(load("syl-width"));
   setFont(load("syl-font"));
   setTheme(load("syl-theme"));
 
@@ -818,7 +830,15 @@
   rhymesEnabled.addEventListener('change', () => setRhymes(rhymesEnabled.checked, true));
   rhymeNear.addEventListener('change', () => setRhymeType(rhymeNear.checked ? 'near' : 'perfect', true));
   rhymeRich.addEventListener('change', () => { store('syl-rhymes-include-rich', rhymeRich.checked ? 'on' : 'off'); if (rhymeCtl) rhymeCtl.setOptions(rhymeSettings()); });
+  const rhymeLock = document.getElementById('rhymeLock');
+  function setRhymeLock(on, persist) {
+    rhymeLock.checked = on;
+    if (on) root.setAttribute('data-rhymes-lock', 'on'); else root.removeAttribute('data-rhymes-lock');
+    if (persist) store('syl-rhymes-lock', on ? 'on' : 'off');
+  }
+  rhymeLock.addEventListener('change', () => setRhymeLock(rhymeLock.checked, true));
   function applyRhymePrefs(get) {
+    setRhymeLock(get('syl-rhymes-lock') === 'on', false);
     rhymeRich.checked = get('syl-rhymes-include-rich') === 'on';
     setRhymeType(get('syl-rhymes-type'), false);
     setRhymeOpen(get('syl-rhymes-open') !== 'off', false);
@@ -903,7 +923,7 @@
   document.getElementById('resetPrefs').addEventListener('click', () => {
     const d = AppPreferences.defaults;
     Object.keys(d).forEach(k => store(k, d[k]));
-    setWrap(d['syl-wrap'] !== 'off'); setFont(d['syl-font']); setTheme(d['syl-theme']); setTone(d['syl-tone']);
+    setWrap(d['syl-wrap'] !== 'off'); setWidth(d['syl-width']); setFont(d['syl-font']); setTheme(d['syl-theme']); setTone(d['syl-tone']);
     setSize(parseInt(d['syl-textsize'], 10));
     setCounts(d['syl-counts'] === 'on'); setTotals(d['syl-totals'] === 'on');
     useDictionary.checked = d['syl-cmudict-enabled'] !== 'off';

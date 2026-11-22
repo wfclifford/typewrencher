@@ -16,7 +16,7 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/styles.css?v=c54ed86c3b">
+<link rel="stylesheet" href="css/styles.css?v=4608031c3d">
 </head>
 <body>
 <main class="app">
@@ -154,6 +154,14 @@
         <div class="opt">
           <div class="opt-label">Editor</div>
           <label class="switch"><input id="wrapToggle" type="checkbox" role="switch" checked><span class="switch-ui" aria-hidden="true"></span><span>Wrap long lines</span></label>
+          <div id="widthOpt">
+            <div class="opt-label" id="lblWidth">Page width</div>
+            <div class="seg" role="group" aria-labelledby="lblWidth">
+              <button type="button" data-width-choice="narrow" aria-pressed="false">Narrow</button>
+              <button type="button" data-width-choice="standard" aria-pressed="true">Standard</button>
+              <button type="button" data-width-choice="wide" aria-pressed="false">Wide</button>
+            </div>
+          </div>
         </div>
       </div>
     </details>
@@ -197,6 +205,12 @@
           </label>
           <p id="rhymesHelp">Adds a Rhymes panel under the text. Downloads about 3.5 MB the first time.</p>
           <div id="rhymeOptions" hidden>
+            <label class="switch dictionary-toggle">
+              <input id="rhymeLock" type="checkbox" role="switch" aria-describedby="lockHelp">
+              <span class="switch-ui" aria-hidden="true"></span>
+              <span>Lock Rhymes height</span>
+            </label>
+            <p id="lockHelp">Keeps the Rhymes panel the same height, so the text above it does not move while you type.</p>
             <label class="switch dictionary-toggle">
               <input id="rhymeNear" type="checkbox" role="switch" aria-describedby="nearHelp">
               <span class="switch-ui" aria-hidden="true"></span>
@@ -262,8 +276,8 @@
 </dialog>
 
 <script defer src="js/license.js?v=874a19f480"></script>
-<script defer src="js/version.js?v=846f1206b9"></script>
-<script defer src="js/preferences.js?v=a9d3c1cde2"></script>
+<script defer src="js/version.js?v=694410c3f0"></script>
+<script defer src="js/preferences.js?v=72ac359a94"></script>
 <script defer src="js/counter.js?v=12a5bf54da"></script>
 <script defer src="js/rhymes.js?v=923679a75b"></script>
 <script defer src="js/mirror.js?v=302da1e7fd"></script>
@@ -272,6 +286,6 @@
 <script defer src="js/host.js?v=73dd0de318"></script>
 <script defer src="js/editor.js?v=12d01ab137"></script>
 <script defer src="js/dialogs.js?v=6e6803ddbf"></script>
-<script defer src="js/app.js?v=e1b83a7dcc"></script>
+<script defer src="js/app.js?v=ebd4436295"></script>
 </body>
 </html>
