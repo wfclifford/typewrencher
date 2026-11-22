@@ -14,7 +14,6 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Ready
 
-- **Mac app: move Open between the files drawer and New.** In the Mac app's top controls, put the Open button between the files drawer button and the "+" (New) button. The order becomes: files drawer, Open, +, name field, Export, Settings. Mac app only: browsers keep their current layout. Update tests.
 - **Lock Rhymes height.** Settings toggle (per-device, off by default) that holds the Rhymes panel at its tallest setting even when there are few or no rhymes, so the editor above it stops resizing while typing. Desktop layout: panel `max-height` is 9rem in `.rhyme-panel`, so give it that as a fixed height when locked. Keyboard-open layout (`html.kb`): the tall row set is `max-height: 4.7rem` under `kb-tall`; lock it to that only when `kb-tall` applies, never on short viewports, and keep the editor's three-line minimum. Only when the panel is open. Follow the existing settings pattern, add the toggle to the drawer, and add tests. Check on real iOS devices; the keyboard-open layout is still unverified there.
 - **Width controls (desktop and tablet).** Settings control with a few fixed steps (Narrow, Standard, Wide; Standard equals today) that widens the UI and line length. Today `.app` has `max-width: 62rem`; drive that from an app-wide per-device setting. Show it only on wide screens (desktop, Mac, iPad); hide it on phones and narrow windows. Check that the syllable gutter, line wrapping and per-line counts stay aligned at every step, font and size. Standard must look exactly as it does now. Add tests.
 
@@ -26,6 +25,7 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Testing
 
+- **Mac app: move Open between the files drawer and New.** In the Mac app's top controls, put the Open button between the files drawer button and the "+" (New) button. The order becomes: files drawer, Open, +, name field, Export, Settings. Mac app only: browsers keep their current layout. Update tests. Web change made; needs a check in the running Mac app (see `mac/HANDOFF.md`).
 - **Keyboard-open Rhymes layout.** Header line plus one or two chip rows, switching at 420px visible height (`kb-tall`). Verified in Chromium only. Needs real iOS and Android devices; the 420px cutoff may need tuning.
 - **Live Pages deploy** at the new `typewrencher` address.
 

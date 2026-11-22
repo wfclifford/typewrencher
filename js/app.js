@@ -224,7 +224,12 @@
     }).catch(function () { say("Couldn\u2019t read that file."); });
   }
   // In the Mac app the button shows the native Open panel; the document opens through the native side.
-  if (host) openBtn.setAttribute("aria-label", "Open a document");
+  if (host) {
+    openBtn.setAttribute("aria-label", "Open a document");
+    // In the Mac app Open sits in the header between the files drawer button and New (the skull button, shown as "+"):
+    // files drawer, Open, +, name, Export, Settings. In a browser it stays in the save box beside the name field.
+    clearBtn.before(openBtn);
+  }
   openBtn.addEventListener("click", function () {
     if (host) { host.post({ type: "open" }); return; }
     openFile.click();
