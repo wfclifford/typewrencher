@@ -1088,6 +1088,9 @@ html:not(.kb) .rhyme-panel { border: 0; border-top: 1px solid var(--rule); borde
   padding: .6rem .75rem; font-size: .9rem;
 }
 .rhyme-panel[hidden] { display: none; }
+.strip-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .5rem; padding: .4rem .75rem; background: var(--sheet); color: var(--ink); border: 1px solid var(--edge); border-radius: 6px; font-size: .9rem; }
+.strip-bar[hidden] { display: none; }
+.strip-bar span { flex: 1 1 14rem; min-width: 0; }
 .rhyme-strict { margin-top: .5rem; }
 .rhyme-group { margin-top: .5rem; }
 .rhyme-group:first-child { margin-top: 0; }

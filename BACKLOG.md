@@ -30,6 +30,7 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Testing
 
+- **Export marker and removing counts on Open.** Exports with counts or totals start with `Typewrencher Export: <name>`. Opening one in a browser removes the header and counts; the Mac app, and older exports without the line, show a "Remove counts / Keep" bar instead (the Mac file autosaves, so it is never changed without a click). Covered by tests; not yet tried in Safari, iOS or the Mac app.
 
 - **Keyboard-open Rhymes layout.** Header line plus one or two chip rows, switching at 420px visible height (`kb-tall`). Verified in Chromium only. Needs real iOS and Android devices; the 420px cutoff may need tuning.
 - **Live Pages deploy** at the new `typewrencher` address.
