@@ -534,6 +534,74 @@
     if (d.getFullYear() !== now.getFullYear()) opts.year = "numeric";
     return d.toLocaleDateString([], opts);
   }
+  // Moving a file to the Trash: the first click on a row's trash button arms it ("Delete?", 4 seconds), the
+  // second click sends { type: 'trash', name }. The bar under the header then offers Undo for 8 seconds.
+  var trashBar = document.getElementById("trashBar"), trashMsg = document.getElementById("trashMsg");
+  var trashUndo = document.getElementById("trashUndo"), trashDismiss = document.getElementById("trashDismiss");
+  var armedRow = null, armedKept = false, armTimer = null; // the row whose trash button says "Delete?": { name, title, item, btn, label }
+  var trashTimer = null, trashUndoId = null, trashed = "";
+  function paintTrash(row, on) {
+    row.item.classList.toggle("armed", on);
+    row.label.textContent = on ? "Delete?" : "";
+    row.btn.setAttribute("aria-label", on ? "Delete? Click again to move " + row.title + " to the Trash" : "Move " + row.title + " to the Trash");
+  }
+  function disarmTrash() {
+    clearTimeout(armTimer); armTimer = null;
+    if (armedRow) paintTrash(armedRow, false);
+    armedRow = null;
+  }
+  function hideTrashBar() { clearTimeout(trashTimer); trashTimer = null; trashUndoId = null; trashBar.hidden = true; }
+  function showTrashBar(message, undoId) {
+    clearTimeout(trashTimer);
+    trashUndoId = undoId || null;
+    trashMsg.textContent = message;
+    trashUndo.hidden = !undoId;
+    trashBar.hidden = false;
+    say(message + (undoId ? " Undo or dismiss." : ""));
+    trashTimer = setTimeout(hideTrashBar, 8000);
+  }
+  function whyNot(error) { return String((error && error.message) || error || "unknown error").replace(/\.$/, ""); }
+  // The native side replies { ok: true, undoId } or an error string (the promise rejects with it).
+  function sendTrash(message, then, failed) {
+    Promise.resolve(host.post(message)).then(function (reply) {
+      if (!reply || reply.ok !== true) throw new Error("no answer from the app");
+      then(reply);
+    }).catch(function (e) { failed(whyNot(e)); });
+  }
+  function moveToTrash(row) {
+    host.flush(); // the newest text is on disk before the file goes
+    sendTrash({ type: "trash", name: row.name }, function (reply) {
+      trashed = row.title;
+      showTrashBar("Moved \u201c" + row.title + "\u201d to the Trash.", reply.undoId);
+      ed.focus();
+    }, function (reason) { showTrashBar("Couldn\u2019t move \u201c" + row.title + "\u201d to the Trash: " + reason + ".", null); });
+  }
+  function trashButton(name, item) {
+    var title = name.replace(/\.txt$/i, ""), btn = document.createElement("button"), label = document.createElement("span");
+    btn.type = "button"; btn.className = "file-trash"; label.className = "trash-label"; btn.appendChild(label);
+    var row = { name: name, title: title, item: item, btn: btn, label: label };
+    paintTrash(row, false);
+    if (armedRow && armedRow.name === name) { armedRow = row; armedKept = true; paintTrash(row, true); } // the list was refreshed while armed
+    btn.addEventListener("click", function () {
+      if (armedRow && armedRow.name === name) { var chosen = armedRow; disarmTrash(); moveToTrash(chosen); return; }
+      disarmTrash();
+      armedRow = row; paintTrash(row, true);
+      say("Click again to move " + title + " to the Trash.");
+      armTimer = setTimeout(disarmTrash, 4000);
+    });
+    return btn;
+  }
+  trashUndo.addEventListener("click", function () {
+    var id = trashUndoId, title = trashed;
+    if (!id) return;
+    hideTrashBar();
+    sendTrash({ type: "untrash", undoId: id }, function () {
+      showTrashBar("Restored \u201c" + title + "\u201d.", null);
+    }, function (reason) { showTrashBar("Couldn\u2019t restore \u201c" + title + "\u201d: " + reason + ".", null); });
+    ed.focus();
+  });
+  trashDismiss.addEventListener("click", function () { hideTrashBar(); ed.focus(); });
+
   // state: { access: 'granted' | 'needed' | 'none', folder, path, current, files: [{ name, modified }] }
   function showFiles(state) {
     state = state || {};
@@ -546,6 +614,7 @@
     filesNote.hidden = state.access === "granted";
     filesGrant.hidden = state.access !== "needed";
     filesList.textContent = "";
+    armedKept = false;
     var now = new Date();
     files.forEach(function (f) {
       var name = String(f.name), item = document.createElement("li"), btn = document.createElement("button");
@@ -559,8 +628,9 @@
         host.flush(); // the document being left is saved with its newest text
         host.post({ type: "openFile", name: name });
       });
-      btn.appendChild(label); btn.appendChild(when); item.appendChild(btn); filesList.appendChild(item);
+      btn.appendChild(label); btn.appendChild(when); item.appendChild(btn); item.appendChild(trashButton(name, item)); filesList.appendChild(item);
     });
+    if (armedRow && !armedKept) disarmTrash(); // the armed file is gone from the list
   }
   if (host) {
     root.setAttribute("data-host", "mac"); // CSS shows the app's icons on Open and .txt

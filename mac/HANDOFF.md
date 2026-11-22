@@ -60,7 +60,28 @@ Do not claim anything you did not run on the Mac. If a check fails, report the e
 
 ### Results
 
-(The coding session fills this in on the same branch, then opens a pull request and does not merge it.)
+Built on branch `trash-with-undo`. Checked on the Mac (macOS 27.2) in a Debug build, window about 1512×949 pt, in a scratch folder `~/Developer/tw-check` (Poem.txt, Other.txt and a file with a long name), by driving the real window with CGEvent clicks and screenshots. `node tools/stamp.js --check` is current and `node tests/app.test.js` passes (241). Timing was loose: some screenshots came late, so only what a screenshot or `ls` showed is claimed.
+
+**What was built.** Page: a trash button beside each file button in every row (`li > button.file + button.file-trash`), the armed state, and a `#trashBar` after `#stripBar` (reuses `.strip-bar`). Bridge: `trash` replies `{ ok, undoId }` or rejects with a short reason; `untrash` replies `{ ok }` or rejects. Documented in the `js/host.js` header; handlers in `EditorSession.swift` (`trash`, `untrash`); tests added. Browsers: nothing is created or shown without the host (a test checks this).
+
+**Decisions.**
+- Sandbox: no new entitlement. Trashing uses the folder grant that `FolderAccess` already keeps; without it the native side replies "Typewrencher has no access to this folder" (the drawer shows no trash buttons then, because it only lists files once access is granted).
+- Undo: `trashItem(at:resultingItemURL:)` keeps the Trash URL in memory by `undoId`, so Undo works until the app quits. Undo never overwrites: it refuses if the original path exists or the Trash copy is gone, with a reason shown in the bar.
+- Open document: the newest text is saved first (if that save fails the trash is refused), the window switches to a new empty `untitled.txt` in the same folder, and the old file's pending autosave and late text from the page are not written back (a write to a file that no longer exists is skipped). Undo restores the file but does not reopen it; the empty untitled file stays and is trashed by the existing rule when left.
+
+**Observed on the Mac.**
+- a. Hover shows the trash icon where the date was (screenshot). Tab order and VoiceOver: not run, not claimed.
+- b. First click gives a red "Delete?" with the trash icon, the date is hidden and the long name shortens to "A very lon…" instead of sitting under the button; after about 4 seconds it reverted (checked with a screenshot after 4.5 s).
+- c. Second click: the row left the list, the count went from "3 files" to "2 files" then "1 file", the bar showed `Moved “Other” to the Trash.` with Undo and Dismiss, and the file was gone from the folder (`ls`). I did not open Finder, so "in the Trash in Finder" is inferred from Undo working (d), not seen. The 8 second timeout was not timed.
+- d. Undo restored `Other.txt` to `~/Developer/tw-check` (`ls`), the drawer listed it again, and the bar said `Restored “Other”.` with Dismiss. No sandbox error: moving the file back from the Trash worked with the folder grant.
+- e. Trashing the open Poem.txt: the window switched to an empty `untitled`, `untitled.txt` was created, Poem.txt did not come back, and the drawer updated. Undoing the open document was not tried.
+- f. Only the no-access case was seen: before the grant the drawer showed "needs your permission" and "Allow access", with no trash buttons. A file that cannot be trashed was not tried.
+- g. Only one theme (e-ink, light) and a wide window were seen. Other themes and a narrow window with a floating drawer: not run.
+- h. `[Chorus]` no count: not run.
+
+**Not run:** a file open in another app, an iCloud file that is not downloaded, a name that already exists in the Trash, Undo when a same-named file exists (covered only by the page test with a mocked reply), the 8 second bar timeout on the real app, and the Tab/VoiceOver items. In one stretch two clicks trashed two rows in a row because screenshots were delayed; the app behaved correctly for each click it received.
+
+**Note:** the empty trash button after the armed state reverts is slightly wider than the icon alone (an empty label span with a gap); cosmetic.
 
 ## Previous task (done): check the Rhymes lock, page width and rhyme mark in the Mac app
 

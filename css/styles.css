@@ -136,6 +136,26 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
 .files-list .file:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .files-list .file[aria-current="true"], .files-list .file[aria-current="true"] .file-when { background: var(--count); color: var(--bg); font-weight: 600; cursor: default; }
 .files-list .file[aria-current="true"]::before { opacity: 1; }
+/* Each row's trash button sits over the date; it shows on hover or keyboard focus and is always a Tab stop. */
+.files-list li { position: relative; }
+.file-trash {
+  position: absolute; right: 0.55rem; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.15rem 0.4rem; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--muted);
+  font: inherit; font-size: 0.8rem; line-height: 1.2; cursor: pointer; opacity: 0;
+}
+.file-trash::before {
+  content: ""; width: 1rem; height: 1rem; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.files-list li:hover .file-trash, .files-list li:has(:focus-visible) .file-trash { opacity: 1; }
+.files-list li:hover .file-when, .files-list li:has(:focus-visible) .file-when { visibility: hidden; }
+.file-trash:hover { border-color: currentColor; }
+.file-trash:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.files-list li:has(.file[aria-current="true"]) .file-trash { color: var(--bg); }
+.files-list li.armed .file-trash { opacity: 1; color: #fff; background: #e00000; border-color: #e00000; font-weight: 600; }
+.files-list li.armed .file-when { display: none; }
+.files-list li.armed .file { padding-right: 5.8rem; } /* the name shortens with an ellipsis instead of sitting under the button */
 .files-path { margin: 0; padding: 0.6rem 0.85rem; border-top: 1px solid var(--edge); color: var(--muted); font-size: 0.8rem; overflow-wrap: anywhere; }
 .files-path:empty { display: none; }
 /* When the row is too narrow for the drawer and a usable text area side by side (a small window, or

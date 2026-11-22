@@ -14,7 +14,7 @@ final class WindowState {
 }
 
 // The one document of the one window, and bridge protocol 1 with the page (js/host.js).
-//   page -> native: ready, textChanged, export, open, new, rename, close, files, grantFolder, openFile
+//   page -> native: ready, textChanged, export, open, new, rename, close, files, grantFolder, openFile, trash, untrash
 //   native -> page: TypewrencherHost.setDocument, setFiles, notify, exportNow, getText
 // Every document is a real .txt file from the moment it exists, and every way of opening one goes
 // through switchTo(_:), which saves the current file first. Edits are saved a moment after the page sends
@@ -114,8 +114,9 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         case "textChanged":
             if let newText = body["text"] as? String {
                 if let old = leaving {
-                    // Typed into the file just left, before the page showed the new one: it belongs there.
-                    try? TextFile.write(newText, to: old, atomically: FolderAccess.url(for: old.deletingLastPathComponent()) != nil)
+                    // Typed into the file just left, before the page showed the new one: it belongs there,
+                    // unless the file is gone (moved to the Trash), which a late write must not bring back.
+                    if FileManager.default.fileExists(atPath: old.path) { try? TextFile.write(newText, to: old, atomically: FolderAccess.url(for: old.deletingLastPathComponent()) != nil) }
                 } else {
                     text = newText
                     scheduleSave()
@@ -145,6 +146,11 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
                 switchTo(folder.appendingPathComponent(name))
             }
             replyHandler(nil, nil)
+        case "trash":
+            let name = body["name"] as? String ?? ""
+            perform { finished in self.trash(name) { value, error in replyHandler(value, error); finished() } }
+        case "untrash":
+            untrash(body["undoId"] as? String ?? "", reply: replyHandler)
         default:
             replyHandler(nil, "unknown message type")
         }
@@ -618,6 +624,55 @@ final class EditorSession: NSObject, WKScriptMessageHandlerWithReply {
         }
         guard let json = try? JSONSerialization.data(withJSONObject: state), let js = String(data: json, encoding: .utf8) else { return }
         web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.setFiles && window.TypewrencherHost.setFiles(\(js))")
+    }
+
+    // MARK: The Trash
+
+    private var trashed: [String: (original: URL, inTrash: URL)] = [:]   // undoId -> where the file was and where it is now
+
+    // The page's trash button: move a file in the document's folder to the Trash (a person can still take it out
+    // there). The reply is { ok, undoId } or an error: a short reason that the page shows inline. The folder
+    // must be granted, as for renaming. Trashing the open document first saves its newest text (so Undo brings
+    // back everything typed) and switches the window to a new empty document; a save that fails refuses.
+    private func trash(_ name: String, reply: @escaping (Any?, String?) -> Void) {
+        guard !name.isEmpty, !name.contains("/"), let folder = fileURL?.deletingLastPathComponent() else { return reply(nil, "no such file") }
+        guard FolderAccess.url(for: folder) != nil else { return reply(nil, "Typewrencher has no access to this folder") }
+        let target = folder.appendingPathComponent(name).standardizedFileURL
+        let isOpen = target == fileURL
+        let go = {
+            guard FileManager.default.fileExists(atPath: target.path) else { self.sendFiles(); return reply(nil, "the file is already gone") }
+            if isOpen { guard self.saveNow() else { return reply(nil, "its newest text could not be saved first") } }
+            var inTrash: NSURL?
+            if isOpen { self.fileWatcher = nil }   // the file leaving is not a change from outside
+            do { try FileManager.default.trashItem(at: target, resultingItemURL: &inTrash) } catch {
+                if isOpen { self.watchFile() }
+                self.sendFiles()
+                return reply(nil, Self.reason(error))
+            }
+            self.setUntitled(target, false)
+            var answer: [String: Any] = ["ok": true]
+            if let inTrash {
+                let id = UUID().uuidString
+                self.trashed[id] = (target, inTrash as URL)
+                answer["undoId"] = id
+            }
+            if isOpen { self.createUntitled(in: folder) } else { self.sendFiles() }
+            reply(answer, nil)
+        }
+        if isOpen { currentText { _ in go() } } else { go() }
+    }
+
+    // Undo: move the file back from the Trash to its original path, never over a file that is there now.
+    private func untrash(_ id: String, reply: @escaping (Any?, String?) -> Void) {
+        guard let item = trashed[id] else { return reply(nil, "it can no longer be restored") }
+        let fm = FileManager.default
+        guard FolderAccess.url(for: item.original.deletingLastPathComponent()) != nil else { return reply(nil, "Typewrencher has no access to the folder") }
+        guard fm.fileExists(atPath: item.inTrash.path) else { return reply(nil, "it is no longer in the Trash") }
+        guard !fm.fileExists(atPath: item.original.path) else { return reply(nil, "a file with that name is in the folder now, so this one stays in the Trash") }
+        do { try fm.moveItem(at: item.inTrash, to: item.original) } catch { return reply(nil, Self.reason(error)) }
+        trashed[id] = nil
+        sendFiles()
+        reply(["ok": true], nil)
     }
 
     // An Open panel already showing the folder, so one click grants it; FolderAccess keeps the choice.
