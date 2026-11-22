@@ -132,7 +132,7 @@ test('default export is the plain text; counts and totals can still be switched 
   const c = boot(), n = c.nodes;
   n.exportCounts.checked = true; n.exportCounts.emit('change'); n.exportTotals.checked = true; n.exportTotals.emit('change');
   n.ed.value = 'cat'; n.fname.value = 'Poem'; n.ed.emit('input'); n.save.click();
-  assert.match(c.download, /Poem\nLines: 1 \| Words: 1 \| Syllables: 1/); assert.match(c.download, /cat  \(1\)/);
+  assert.equal(c.download, 'Typewrencher Export: Poem\nLines: 1 | Words: 1 | Syllables: 1\n\ncat  (1)');
   assert.equal(AppPreferences.create({getItem: k => (k === 'syl-counts' ? 'on' : null)}).get('syl-counts'), 'on', 'a saved choice still wins');
 });
 test('confirmed erase clears text and filename', () => {
@@ -1835,8 +1835,7 @@ test('host: setDocument keeps a clamped selection and tolerates missing fields',
 test('host: exportText gives the text the native File > Export saves, with counts and totals when on', () => {
   const b = bootHost({'syl-counts': 'on', 'syl-totals': 'on'});
   b.host().setDocument({text: 'cat', name: 'Poem.txt'});
-  assert.match(b.host().exportText(), /Poem\nLines: 1 \| Words: 1 \| Syllables: 1/);
-  assert.match(b.host().exportText(), /cat  \(1\)/);
+  assert.equal(b.host().exportText(), 'Typewrencher Export: Poem\nLines: 1 | Words: 1 | Syllables: 1\n\ncat  (1)');
   assert.equal(bootHost().host().exportText(), '', 'plain by default');
 });
 test('host: the skull is a New document button: one press sends unsent text, then new, and erases nothing', () => {
@@ -2120,4 +2119,53 @@ test('Page width: at Narrow the open files drawer (Mac app) widens the page by i
   // 15.75rem is the drawer's width plus the row's gap.
   assert.match(css, /\.files-panel \{\n  width: 15rem;/);
   assert.match(css, /\.work \{[^}]*gap: 0\.75rem;/);
+});
+
+// ---- Exports carry a marker; opening one takes the syllable counts back out
+const hasWord = line => /\p{L}/u.test(line);
+test('AppEditor.strip: a marked export loses the marker, the summary and the counts, and nothing else', () => {
+  const r = AppEditor.strip('Typewrencher Export: Poem\nLines: 2 | Words: 6 | Syllables: 8\n\nYou know these creeps.  (4)\n\nsee note  (3)', hasWord);
+  assert.deepEqual({...r}, {looks: true, marked: true, text: 'You know these creeps.\n\nsee note'});
+  const c = AppEditor.strip('Typewrencher Export: Poem\n\nYou know these creeps.  (4)\n(3)', hasWord);
+  assert.equal(c.text, 'You know these creeps.\n(3)', 'a counts-only export; a line with no words keeps its (3)');
+});
+test('AppEditor.strip: older exports are recognised without a marker', () => {
+  assert.deepEqual({...AppEditor.strip('Poem\nLines: 1 | Words: 1 | Syllables: 1\n\ncat  (1)', hasWord)}, {looks: true, marked: false, text: 'cat'});
+  const counts = AppEditor.strip('one two  (2)\nthree four  (2)\n\nfive six  (2)', hasWord);
+  assert.deepEqual({...counts}, {looks: true, marked: false, text: 'one two\nthree four\n\nfive six'});
+});
+test('AppEditor.strip: ordinary writing is left alone, even with a stray "(3)" ending', () => {
+  for (const text of ['You know these creeps.', 'see note  (3)', 'a  (1)\nb\nc\nd', 'one (2)\ntwo (2)', 'Lines: 1 | Words: 1 | Syllables: 1']) {
+    assert.deepEqual({...AppEditor.strip(text, hasWord)}, {looks: false, marked: false, text}, text);
+  }
+});
+test('exports: plain stays plain; counts only and totals both start with the Typewrencher Export line', () => {
+  const run = saved => { const b = boot(saved), n = b.nodes; n.ed.value = 'cat\n\ndog house'; n.fname.value = 'Poem'; n.ed.emit('input'); n.save.click(); return b.download; };
+  assert.equal(run({}), 'cat\n\ndog house');
+  assert.equal(run({'syl-counts': 'on'}), 'Typewrencher Export: Poem\n\ncat  (1)\n\ndog house  (2)');
+  assert.equal(run({'syl-totals': 'on'}), 'Typewrencher Export: Poem\nLines: 2 | Words: 3 | Syllables: 3\n\ncat\n\ndog house');
+  assert.equal(run({'syl-counts': 'on', 'syl-totals': 'on'}), 'Typewrencher Export: Poem\nLines: 2 | Words: 3 | Syllables: 3\n\ncat  (1)\n\ndog house  (2)');
+});
+test('Open in a browser: a marked export opens clean; a lookalike opens as is and offers to remove the counts', async () => {
+  const bytes = text => Array.from(Buffer.from(text));
+  const b = boot(); await openIn(b, fileOf(bytes('Typewrencher Export: Poem\n\ncat  (1)\ndog house  (2)'), 'Poem.txt'));
+  assert.equal(b.nodes.ed.value, 'cat\ndog house'); assert.notEqual(b.nodes.stripBar.hidden, false);
+  const c = boot(); await openIn(c, fileOf(bytes('cat  (1)\ndog house  (2)'), 'old.txt'));
+  assert.equal(c.nodes.ed.value, 'cat  (1)\ndog house  (2)'); assert.equal(c.nodes.stripBar.hidden, false);
+  assert.equal(c.nodes.stripMsg.textContent, 'This looks like an export with syllable counts.');
+  c.nodes.stripYes.click(); assert.equal(c.nodes.ed.value, 'cat\ndog house'); assert.equal(c.nodes.stripBar.hidden, true);
+  const d = boot(); await openIn(d, fileOf(bytes('cat  (1)\ndog house  (2)'), 'old.txt')); d.nodes.stripNo.click();
+  assert.equal(d.nodes.ed.value, 'cat  (1)\ndog house  (2)'); assert.equal(d.nodes.stripBar.hidden, true);
+  const e = boot(); await openIn(e, fileOf(bytes('cat  (1)\ndog house  (2)'), 'old.txt')); e.nodes.ed.value = 'cat  (1)\ndog house  (2)!'; e.nodes.ed.emit('input');
+  assert.equal(e.nodes.stripBar.hidden, true, 'typing withdraws the offer');
+  const f = boot(); await openIn(f, fileOf(bytes('plain words\nmore words'), 'plain.txt')); assert.notEqual(f.nodes.stripBar.hidden, false);
+});
+test('Mac app: an exported document is never changed without a click; Remove counts saves the clean text', () => {
+  const b = bootHost(), n = b.nodes;
+  b.host().setDocument({text: 'Typewrencher Export: Poem\n\ncat  (1)', name: 'Poem.txt'});
+  assert.equal(n.ed.value, 'Typewrencher Export: Poem\n\ncat  (1)'); assert.equal(n.stripBar.hidden, false);
+  assert.equal(n.stripMsg.textContent, 'This file was exported from Typewrencher with syllable counts.');
+  n.stripYes.click(); assert.equal(n.ed.value, 'cat'); b.flush(300);
+  assert.deepEqual(JSON.parse(JSON.stringify(b.messages.at(-1))), {type: 'textChanged', text: 'cat'});
+  b.host().setDocument({text: 'plain', name: 'b.txt'}); assert.equal(n.stripBar.hidden, true, 'the next document clears the offer');
 });

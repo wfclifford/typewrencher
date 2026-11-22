@@ -200,6 +200,32 @@
     });
   });
 
+  // Opened text that looks like an export with syllable counts: offer to remove them, in a bar under the header.
+  var stripBar = document.getElementById("stripBar"), stripMsg = document.getElementById("stripMsg");
+  var stripYes = document.getElementById("stripYes"), stripNo = document.getElementById("stripNo");
+  var stripFor = null; // { before, after } while the offer is showing
+  function countable(line) { return lineSyl(line).n > 0; }
+  function hideStrip() { stripFor = null; stripBar.hidden = true; }
+  function offerStrip(found) {
+    if (!found) { hideStrip(); return; }
+    stripFor = { before: ed.value, after: found.text };
+    stripMsg.textContent = found.marked ? "This file was exported from Typewrencher with syllable counts." : "This looks like an export with syllable counts.";
+    stripBar.hidden = false;
+    say(stripMsg.textContent + " Remove counts or keep them.");
+  }
+  stripYes.addEventListener("click", function () {
+    var job = stripFor;
+    hideStrip();
+    if (!job || ed.value !== job.before) return; // the text changed since the offer
+    AppEditor.replace(ed, job.after, document);
+    ed.scrollTop = 0;
+    render(); syncSave();
+    if (rhymeCtl) rhymeCtl.refresh();
+    if (host) host.textChanged(ed.value);
+    say("Syllable counts removed.");
+  });
+  stripNo.addEventListener("click", function () { hideStrip(); ed.focus(); });
+
   // Open a .txt file: from the Open button or by dropping a file on the editor.
   var openBtn = document.getElementById("openBtn"), openFile = document.getElementById("openFile");
   var MAX_OPEN = 5 * 1024 * 1024;
@@ -215,12 +241,16 @@
     if (!/\.txt$/i.test(file.name || "") && file.type && file.type !== "text/plain") { say("Only .txt files can be opened."); return; }
     if (ed.value && typeof confirm === "function" && !confirm("Replace the current text with " + (file.name || "this file") + "?")) return;
     file.arrayBuffer().then(function (buffer) {
-      ed.value = decodeText(buffer).replace(/\r\n?/g, "\n");
+      var text = decodeText(buffer).replace(/\r\n?/g, "\n"), found = AppEditor.strip(text, countable);
+      // A file this app exported is cleaned as it opens; one that only looks like an export is left alone and the offer below appears.
+      var cleaned = found.looks && found.marked;
+      ed.value = cleaned ? found.text : text;
       fname.value = (file.name || "").replace(/\.txt$/i, "");
       ed.scrollTop = 0;
       render(); syncSave();
       if (rhymeCtl) rhymeCtl.refresh(); // the rhymed-word mark follows the new text
-      say("Opened " + (file.name || "file") + ".");
+      say("Opened " + (file.name || "file") + (cleaned ? ". Syllable counts removed." : "."));
+      offerStrip(found.looks && !cleaned ? found : null);
     }).catch(function () { say("Couldn\u2019t read that file."); });
   }
   // In the Mac app the button shows the native Open panel; the document opens through the native side.
@@ -253,7 +283,7 @@
   savebox.hidden = false; // the filename field and .txt export work in a browser and in the Mac app
   syncSave();
 
-  ed.addEventListener("input", function () { render(); syncSave(); if (host) host.textChanged(ed.value); });
+  ed.addEventListener("input", function () { if (stripFor && ed.value !== stripFor.before) hideStrip(); render(); syncSave(); if (host) host.textChanged(ed.value); });
   ed.addEventListener("scroll", function () { gutter.scrollTop = ed.scrollTop; });
   var root = document.documentElement;
   var sysTheme = root.getAttribute("data-theme");
@@ -431,11 +461,11 @@
       if (r.n) { nLines++; nWords += r.words; nSyl += r.n; }
       return countsOn && r.n ? l + "  (" + r.n + ")" : l;
     }).join("\n");
-    if (!totalsOn) return out;
-    var title = fname.value.replace(/\.txt$/i, "").trim();
-    var head = (title ? title + "\n" : "") +
-      "Lines: " + nLines + " | Words: " + nWords + " | Syllables: " + nSyl + "\n\n";
-    return head + out;
+    if (!totalsOn && !countsOn) return out;
+    // Exports with counts or totals start with a marker line, so the app can recognise them when opened.
+    var head = AppEditor.exportHeader(fileName().replace(/\.txt$/i, "")) + "\n";
+    if (totalsOn) head += "Lines: " + nLines + " | Words: " + nWords + " | Syllables: " + nSyl + "\n";
+    return head + "\n" + out;
   }
 
   var clearLabel = document.getElementById("clearLabel");
@@ -449,6 +479,7 @@
   }
   if (host) clearBtn.setAttribute("aria-label", clearName);
   function clearAll() {
+    hideStrip();
     AppEditor.clear(ed, fname, document);
     render();
     syncSave();
@@ -569,7 +600,8 @@
         host.cancel(); // text the native side is replacing must not be sent back
         fname.value = String((doc && doc.name) || "").replace(/\.txt$/i, "");
         clearTimeout(renameTimer); hostName = fname.value; // showing a name is not a rename
-        if (text !== ed.value) {
+        var shown = text !== ed.value, found = shown ? AppEditor.strip(text, countable) : null;
+        if (shown) {
           var start = ed.selectionStart, end = ed.selectionEnd, top = ed.scrollTop;
           ed.value = text;
           if (typeof start === "number" && typeof ed.setSelectionRange === "function") {
@@ -579,6 +611,8 @@
           render();
           if (rhymeCtl) rhymeCtl.refresh();
         }
+        // The file saves itself here, so it is never changed without a click: the offer shows for any export.
+        if (shown) offerStrip(found.looks ? found : null);
         syncSave();
       },
       setFiles: showFiles,
