@@ -25,11 +25,11 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Testing
 
-- **Mac app: move Open between the files drawer and New.** In the Mac app's top controls, put the Open button between the files drawer button and the "+" (New) button. The order becomes: files drawer, Open, +, name field, Export, Settings. Mac app only: browsers keep their current layout. Update tests. Web change made; needs a check in the running Mac app (see `mac/HANDOFF.md`).
 - **Keyboard-open Rhymes layout.** Header line plus one or two chip rows, switching at 420px visible height (`kb-tall`). Verified in Chromium only. Needs real iOS and Android devices; the 420px cutoff may need tuning.
 - **Live Pages deploy** at the new `typewrencher` address.
 
 ## Done
+- **Mac app: move Open between the files drawer and New.** In the Mac app's top controls, put the Open button between the files drawer button and the "+" (New) button. The order becomes: files drawer, Open, +, name field, Export, Settings. Mac app only: browsers keep their current layout. Update tests. Checked in the running Mac app by the owner.
 
 - "Done" success label: the `.txt` button reads "Done" on downloads, the iOS share sheet and native saves; the status line and accessible name say "Done title.txt".
 - Version in About: last line of About shows `Version 0.1.N · build <id>`. The build id changes with every code change (`tools/stamp.js`); the release number counts merges on `main` that changed a site file and is set only in the deployed copy (`tools/build-site.js --release`). Local and pull request builds show `dev`.
