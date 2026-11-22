@@ -17,6 +17,7 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Idea
 
+- **Skull button on Mac and iOS: hold to bury, with a Graveyard.** Today the skull is "+" (New) in the Mac app and erases text in browsers. Idea: bring the skull back on Mac and iOS as a fun, safe "start over". Press and hold fills a ring around the skull; releasing early cancels, holding through clears the document; the button then reads "Undo" for a few seconds (inline, no dialogs). Erasing keeps the old text as a dated file in a "Graveyard" (the Trash on the Mac; a recoverable list in the files drawer on iOS), so nothing is lost. Extras to consider: text dissolving with the jaw rattling (skipped under reduced motion), "Last words: N syllables" in the status line, a shake-to-bury gesture on iOS (needs an off switch). Not scheduled; decide how it relates to "+" New before building.
 - **Autism-friendly improvements.** Documented in the Docs artifact "Autism-friendly improvements for Typewrencher".
 - **Safari Tab behavior.** Safari skips buttons and toggles by default. In-app fix only (no README note or browser-settings instructions), such as `tabindex` on the controls. Unverified in Safari.
 - **Node 24 upgrade.** Bump the GitHub Actions versions in `.github/workflows/pages.yml`. Effort is documented in the Docs artifact "Upgrading GitHub Actions to Node 24".
