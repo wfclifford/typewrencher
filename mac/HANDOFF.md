@@ -46,4 +46,27 @@ Steps:
 
 ## Results
 
-(none yet)
+Checked on the Mac (macOS 27.2) in a Debug build of the app with the site built by `node tools/build-site.js mac/Typewrencher/site`, window 1400×860 pt, a scratch file `~/Developer/tw-check/Poem.txt`. All observations are from screenshots of the running app. One Mac-only problem was found and fixed (item a, files drawer at Narrow); everything else passed as released.
+
+**a. Page width.** Pass, after one fix.
+- "Page width" (Narrow, Standard, Wide) sits directly under "Wrap long lines" in Display Options, label on the same row as the buttons.
+- Each step changes the page width: the header, editor, gutter, Rhymes panel and footer all follow it. Narrow and Wide with wrapping on, Standard with wrapping off (a long line stays on one row and scrolls): the syllable counts stayed on their lines each time, including a wrapped first line (its count on the first row, nothing on the wrapped rows).
+- At a 760 pt wide window the whole Page width row is hidden.
+- **Found and fixed:** at Narrow with the files drawer open (Mac app only), the drawer floated over the left of the text, hiding the gutter and the line starts. Cause: at Narrow the text row is under 44rem, which is the drawer's "float when too narrow" rule (`@container work (max-width: 44rem)`). Fix in `css/styles.css`: at Narrow, while the drawer is open, the page is widened by the drawer and its gap (`max-width: calc(var(--page-w) + 15.75rem)`), so the drawer sits beside the text and the text keeps the Narrow width. Only Narrow is changed: Standard and Wide with the drawer open look as before, and browsers never show the drawer, so they are unchanged. Re-checked in the rebuilt app: drawer beside the text, counts aligned; closing the drawer gives the same Narrow page with identical line wrapping; Standard with the drawer open unchanged. On a window too small for both, the existing float rule still applies. Added a test; stamp, `--check` and `node tests/app.test.js` (225 pass) run.
+
+**b. Lock Rhymes height.** Pass.
+- Appears only with Show rhymes on, under Show rhymes and its help text, above Include near rhymes, with the help line "Keeps the Rhymes panel the same height, so the text above it does not move while you type."
+- On, typing a made-up word ("zzqxv", no rhymes): the panel kept its full height, the top edge did not move, and "No pronunciation found for "zzqxv"." showed inside it. Off, the same word: the panel shrank to the message and the editor grew.
+- Off by default (it was off before I turned it on). "Reset to defaults" turned it off (seen after turning Show rhymes back on, since Reset also turns Show rhymes off).
+
+**c. Rhyme mark.** Pass, with the cursor inside "light".
+- retro_term and retro_amber (light, and retro_term dark): an outline with a thick underline. The block cursor on "g" is the only solid cell and blinks (one capture with it on, one with it off).
+- B&W and High contrast: an outline with a thick underline, ordinary line cursor.
+- e-ink light and dark: a soft shade, no outline.
+- Grey, Warm, Cool (and Grey dark): a soft tint with a thin border in the tone's color.
+
+**d. Persistence.** Pass. With Wide and the lock on, quit with Cmd-Q and relaunched: Wide was still selected and applied, and the made-up word still showed a full-height panel.
+
+**e. Header order.** Pass: files drawer, Open, +, Name field, Export, Settings.
+
+**Not checked:** VoiceOver (not run, so not claimed); keyboard order through the new controls; the keyboard-open (`html.kb`) layouts, which need an iPhone. Noted, not a bug: Reset to defaults leaves Color Tone and Theme as they were.

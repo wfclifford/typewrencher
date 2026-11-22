@@ -2113,3 +2113,11 @@ test('Page width: control sits under Wrap long lines; Standard default; saved, a
   const restored = boot({'syl-width': 'narrow'});
   assert.equal(restored.document.documentElement.getAttribute('data-width'), 'narrow');
 });
+
+test('Page width: at Narrow the open files drawer (Mac app) widens the page by its width instead of floating over the text', () => {
+  const css = read('css/styles.css');
+  assert.match(css, /@media \(min-width: 800px\) \{[^@]*:root\[data-width="narrow"\] \.app:has\(#filesPanel:not\(\[hidden\]\)\) \{ max-width: calc\(var\(--page-w\) \+ 15\.75rem\); \}/);
+  // 15.75rem is the drawer's width plus the row's gap.
+  assert.match(css, /\.files-panel \{\n  width: 15rem;/);
+  assert.match(css, /\.work \{[^}]*gap: 0\.75rem;/);
+});

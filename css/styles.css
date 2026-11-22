@@ -1157,6 +1157,9 @@ html.kb .rhyme-hint, html.kb .rhyme-more { display: none; }
 @media (min-width: 800px) {
   :root[data-width="narrow"] { --page-w: 44rem; }
   :root[data-width="wide"] { --page-w: 84rem; }
+  /* Mac app: at Narrow the open files drawer (15rem and the 0.75rem gap) is added beside the page, so the text
+     keeps the Narrow width instead of falling under the drawer's floating rule (.work under 44rem). */
+  :root[data-width="narrow"] .app:has(#filesPanel:not([hidden])) { max-width: calc(var(--page-w) + 15.75rem); }
 }
 /* Lock Rhymes height: keep the open panel at its tallest size. Short keyboard-open screens (kb without kb-tall) stay one row. */
 html[data-rhymes-lock="on"]:not(.kb) .rhyme-panel:not([hidden]) { box-sizing: border-box; height: 9rem; }
