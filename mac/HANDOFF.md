@@ -4,7 +4,65 @@ This file is how the planning chat and the coding session pass work to each othe
 
 How to use it: pull `main`, read the task below, do it on a branch, then fill in Results in the same branch and open a pull request. Do not merge it.
 
-## Task: check the Rhymes lock, page width and rhyme mark in the Mac app
+## Task: move files to the Trash from the files drawer, with Undo
+
+Status: decided by the owner; the interaction was mocked up and approved. Nothing is built yet. Mac app only. Browsers have no files drawer and must behave exactly as before.
+
+Get current first (the site copy the app serves is not tracked by git):
+1. Pull `main`.
+2. Run `node tools/build-site.js mac/Typewrencher/site`, then build and run the app.
+Since the last Mac check, `main` gained the export marker with the "Remove counts / Keep" bar (already tried on the Mac and fine) and the rule that text in `[ ]` is ignored in counts (web only, not yet tried on the Mac: typing `[Chorus]` should show no count). No native code has changed since the last Mac task.
+
+### Decision
+
+- Each file row in the drawer can be deleted. The file leaves the folder, but it goes to the macOS Trash (`FileManager.trashItem`), not permanent removal. Undo puts it back.
+- The design principles in `CLAUDE.md` apply: no `NSAlert`, no confirm dialogs, no sheets, no toasts. Feedback is inline.
+
+### Interaction (approved mockup)
+
+1. Hover or keyboard focus on a row shows a trash button where the date is. It has its own Tab stop and the accessible name "Move <name> to the Trash".
+2. First click turns the button into "Delete?" (filled, with the trash icon) for 4 seconds, then it reverts. While armed, the file name shortens with an ellipsis so the button does not cover it.
+3. Second click moves the file to the Trash. The row leaves the list and the file count updates.
+4. The bar under the header (the one used for "Remove counts / Keep") shows: Moved "<name>" to the Trash. with Undo and Dismiss, for about 8 seconds. Reuse the pattern or add a sibling bar, but keep it inline. Announce it through the status line for screen readers.
+5. Undo moves the file back to its original path and refreshes the drawer. If a file with that name has since been created, do not overwrite it: report the problem inline.
+
+### Bridge (protocol 1 stays compatible; additive only)
+
+- Add page to native `{ type: 'trash', name }`, with a reply of `{ ok, undoId }` or an error string, and `{ type: 'untrash', undoId }`. Other names are fine, but existing messages keep their shape.
+- Update the header comment in `js/host.js`, the handler in `mac/Typewrencher/WebEditorView.swift` and the tests in the same change.
+
+### Decide and report, do not assume
+
+- **Sandbox.** Trashing needs write access to the folder. Check how the entitlements and `FolderAccess` (the security-scoped bookmark) apply. Listing a folder is not the same as being able to delete in it (see the comment in `FolderFiles.swift` about iCloud-synced Documents). If a file cannot be trashed, show the reason inline.
+- **Undo from the Trash.** Use `trashItem(at:resultingItemURL:)` and keep the resulting URL. Test that moving the file back works under the sandbox. If the sandbox blocks it, report the exact error before choosing a workaround.
+- **Deleting the open document.** Switch the window to a new empty document, cancel any pending autosave so the file is not written back, and make sure Undo restores the file cleanly. Describe what you chose.
+- **Other cases.** A file open in another app, an iCloud file that is not downloaded, and a name that already exists in the Trash: observe what happens and handle each inline.
+- Keep the single-window model and the header order: files drawer, Open, +, name field, Export, Settings.
+
+### Web side
+
+- Changes to site files count as a release. Never edit `js/version.js`, the `?v=` hashes or the generated block in `sw.js` by hand. After web changes run `node tools/stamp.js`, then `node tools/stamp.js --check` and `node tests/app.test.js`. All tests must pass.
+- Add tests for the drawer markup, the armed state and its timeout, the bar with Undo, keyboard access, and that browsers are unchanged.
+- Update the README or `mac/README.md` if they list drawer features.
+
+### Check on the Mac and report what you observed, with exact errors
+
+a. Hover, focus and Tab reach the trash button; VoiceOver reads its name (claim this only if you ran VoiceOver).
+b. The armed state reverts after 4 seconds; long names are shortened, not covered.
+c. Trashing a file removes the row, updates the count and shows the bar, and the file is in the Trash in Finder.
+d. Undo restores the file to the same place and the drawer lists it again.
+e. Trashing the open document, as above.
+f. A folder without granted access, or a file that cannot be trashed: the failure shows inline.
+g. All themes, and a narrow window where the drawer floats.
+h. `[Chorus]` in the text shows no syllable count.
+
+Do not claim anything you did not run on the Mac. If a check fails, report the exact observation first, then fix it.
+
+### Results
+
+(The coding session fills this in on the same branch, then opens a pull request and does not merge it.)
+
+## Previous task (done): check the Rhymes lock, page width and rhyme mark in the Mac app
 
 Status: the web side is done and released (site release 0.1.20: Lock Rhymes height, Page width, the rhyme mark change, and the e-ink fix). Your part is to check it in the running Mac app and fix only what is broken there. Nothing in this task changes the bridge.
 
