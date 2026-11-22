@@ -34,12 +34,11 @@ _Nothing queued._
 
 ## Testing
 
-- **Export marker and removing counts on Open.** Exports with counts or totals start with `Typewrencher Export: <name>`. Opening one in a browser removes the header and counts; the Mac app, and older exports without the line, show a "Remove counts / Keep" bar instead (the Mac file autosaves, so it is never changed without a click). Covered by tests; not yet tried in Safari, iOS or the Mac app.
-
-- **Keyboard-open Rhymes layout.** Header line plus one or two chip rows, switching at 420px visible height (`kb-tall`). Verified in Chromium only. Needs real iOS and Android devices; the 420px cutoff may need tuning.
-- **Live Pages deploy** at the new `typewrencher` address.
 
 ## Done
+- Export marker and removing counts on Open: exports with counts or totals start with `Typewrencher Export: <name>`, which shows in the saved file only. Opening one in a browser removes the marker line, summary and counts, so the editor shows the original text; the Mac app, and older exports without the marker, show a "Remove counts / Keep" bar instead. Tried in the web app by the owner and works. Not yet tried in Safari on iOS or the Mac app.
+- Keyboard-open Rhymes layout (header line plus one or two chip rows, switching at 420px visible height): tried by the owner on a real device and passes.
+- Live Pages deploy at the `typewrencher` address: confirmed working.
 - **Width controls (desktop and tablet).** Settings control with a few fixed steps (Narrow, Standard, Wide; Standard equals today) that widens the UI and line length. Today `.app` has `max-width: 62rem`; drive that from an app-wide per-device setting. Show it only on wide screens (desktop, Mac, iPad); hide it on phones and narrow windows. Check that the syllable gutter, line wrapping and per-line counts stay aligned at every step, font and size. Standard must look exactly as it does now. Add tests. Released in 0.1.17. Checked by the owner on iPad and iPhone; the Mac app check is still open (see `mac/HANDOFF.md`).
 
 - **Lock Rhymes height.** Settings toggle (per-device, off by default) that holds the Rhymes panel at its tallest setting even when there are few or no rhymes, so the editor above it stops resizing while typing. Desktop layout: panel `max-height` is 9rem in `.rhyme-panel`, so give it that as a fixed height when locked. Keyboard-open layout (`html.kb`): the tall row set is `max-height: 4.7rem` under `kb-tall`; lock it to that only when `kb-tall` applies, never on short viewports, and keep the editor's three-line minimum. Only when the panel is open. Follow the existing settings pattern, add the toggle to the drawer, and add tests. Check on real iOS devices; the keyboard-open layout is still unverified there. Released in 0.1.17. Checked by the owner on iPad and iPhone; the Mac app check is still open (see `mac/HANDOFF.md`).
