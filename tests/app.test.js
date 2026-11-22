@@ -1638,7 +1638,8 @@ test('rhymes panel layout: collapsed one-line label, capped height, headerless l
   assert.match(css, /\.rhyme-panel \{\s*max-height: 9rem;/); assert.equal(/\.rhyme-title/.test(css), false);
   assert.match(css, /#ed, #hl \{ grid-area: 1 \/ 2; \}/); assert.match(css, /#hl \{[^}]*pointer-events: none;[^}]*color: transparent;/);
   assert.match(css, /#ed\.wrap ~ #hl \{ white-space: pre-wrap;/);
-  assert.match(css, /:root:is\(\[data-tone="hc-bw"\], \[data-tone="terminal"\], \[data-tone="amber"\], \[data-tone="hc-yellow"\], \[data-tone="eink"\]\) #hl mark \{\s*background: var\(--ink\); color: var\(--bg\);/, 'inverted block in the monochrome tones');
+  assert.match(css, /:root:is\(\[data-tone="hc-bw"\], \[data-tone="terminal"\], \[data-tone="amber"\], \[data-tone="hc-yellow"\], \[data-tone="eink"\]\) #hl mark \{[^}]*background: transparent;[^}]*box-shadow: inset 0 0 0 1px var\(--ink\), inset 0 -3px 0 var\(--ink\)/, 'outline and underline, not a fill, in the monochrome tones');
+  assert.doesNotMatch(css, /#hl mark \.bc/, 'the cursor keeps its own solid look inside a marked word');
   assert.match(css, /#hl mark \{ background: color-mix\(in srgb, var\(--count\) 18%/, 'tint in the colour tones');
   assert.match(js, /function rhymesShown\(\) \{ return rhymesEnabled\.checked && rhymeToggle\.getAttribute\('aria-expanded'\) === 'true'; \}/);
   assert.match(js, /rhymeLabel\.textContent = info \?/); assert.match(js, /rhymeCtl\.refresh\(\); \/\/ the rhymed-word mark follows the new text/);
