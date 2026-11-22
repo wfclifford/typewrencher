@@ -14,14 +14,14 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Ready
 
-_Nothing queued._
+1. **Ignore bracketed text in counts.** Remove anything between `[` and `]` (matched pairs, same line only) before counting, so `[Chorus]` or `[x2]` adds no syllables to a line or the total. Brackets only, not parentheses, because parentheses often hold sung backing vocals. Rhymes end-word detection should skip brackets too; decide whether the word count does as well. Optional: dim bracketed text in the editor. First step toward section awareness.
 
 ## Idea
 
 - **Autism-friendly improvements.** Documented in the Docs artifact "Autism-friendly improvements for Typewrencher".
 - **Safari Tab behavior.** Safari skips buttons and toggles by default. In-app fix only (no README note or browser-settings instructions), such as `tabindex` on the controls. Unverified in Safari.
 - **Node 24 upgrade.** Bump the GitHub Actions versions in `.github/workflows/pages.yml`. Effort is documented in the Docs artifact "Upgrading GitHub Actions to Node 24".
-- **Lyrics: section awareness.** Skip lines like `[Verse]`, `[Chorus]` or `Bridge:` in counts, start a new stanza at each, and show a syllable subtotal per section. Plain text only.
+- **Lyrics: section awareness.** Builds on the bracket rule above. Skip lines like `[Verse]`, `[Chorus]` or `Bridge:` in counts, start a new stanza at each, and show a syllable subtotal per section. Plain text only.
 - **Lyrics: line-match view.** Compare verse 2 to verse 1 line by line and flag lines whose syllable counts differ, so lyrics fit the same melody.
 - **Lyrics: rhyme scheme letters.** Margin labels (A, B, C) from each line's end word, to show ABAB, AABB and lines meant to rhyme that don't. Builds on sections.
 - **Lyrics: stress pattern per line.** Show stress (like `da DUM da DUM`) from CMUdict stress digits. Depends on whether the shipped dictionary keeps them; if not, the data file grows.
