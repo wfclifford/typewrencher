@@ -14,7 +14,7 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Ready
 
-- **Mac app: move Open between the files drawer and New.** In the Mac app's top controls, put the Open button between the files drawer button and the "+" (New) button. The order becomes: files drawer, Open, +, name field, Export, Settings. Mac app only: browsers keep their current layout. Update tests.
+(nothing queued)
 
 ## Idea
 
@@ -24,6 +24,7 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Testing
 
+- **Mac app: move Open between the files drawer and New.** In the Mac app's top controls, put the Open button between the files drawer button and the "+" (New) button. The order becomes: files drawer, Open, +, name field, Export, Settings. Mac app only: browsers keep their current layout. Update tests. Web change made; needs a check in the running Mac app (see `mac/HANDOFF.md`).
 - **Keyboard-open Rhymes layout.** Header line plus one or two chip rows, switching at 420px visible height (`kb-tall`). Verified in Chromium only. Needs real iOS and Android devices; the 420px cutoff may need tuning.
 - **Live Pages deploy** at the new `typewrencher` address.
 

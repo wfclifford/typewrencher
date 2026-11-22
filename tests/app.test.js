@@ -35,6 +35,7 @@ function boot(saved = {}, native = true, opts = {}) {
     addEventListener(k, f) { (this.events[k] ??= []).push(f); }
     emit(k, event = {}) { for (const f of this.events[k] || []) f({target: this, ...event}); }
     click() { this.emit('click'); }
+    before(node) { (this.movedBefore ??= []).push(node); } // the page moves a button in front of this one
     focus() { active = this; }
     select() {}
     remove() {}
@@ -1774,6 +1775,7 @@ function bootHost(saved = {}, opts = {}) {
 test('in a browser the host bridge is off: Open and Save stay visible and no global is added', () => {
   const b = boot();
   assert.equal(b.nodes.savebox.hidden, false);
+  assert.equal(b.nodes.clearBtn.movedBefore, undefined, 'in a browser Open stays beside the name field');
   assert.equal(AppHost.create({addEventListener() {}}, {}), null);
   assert.equal(AppHost.create({webkit: {messageHandlers: {}}}, {}), null);
   assert.equal(AppHost.create({webkit: {messageHandlers: {typewrencher: {}}}}, {}), null, 'a handler without postMessage is not a host');
@@ -1783,6 +1785,7 @@ test('inside the Mac app the page keeps Open, the filename and .txt export, anno
   assert.equal(b.nodes.savebox.hidden, false);
   assert.notEqual(b.nodes.openBtn.hidden, true);
   assert.equal(b.nodes.openBtn.getAttribute('aria-label'), 'Open a document');
+  assert.deepEqual(b.nodes.clearBtn.movedBefore, [b.nodes.openBtn], 'in the app Open moves in front of New: files drawer, Open, +, name, Export, Settings');
   assert.equal(b.nodes.clearBtn.getAttribute('aria-label'), 'New document');
   assert.deepEqual(JSON.parse(JSON.stringify(b.messages)), [{type: 'ready', protocol: 1}]); // the page runs in its own realm
   assert.equal(b.host().protocol, 1);
