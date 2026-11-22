@@ -14,7 +14,7 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Ready
 
-_Nothing queued._
+- **Delete files from the files drawer (Mac app only).** Decided: the file moves to the macOS Trash (not permanent delete), with Undo. Hover or focus shows a trash button in place of the date; first click arms it as "Delete?" for 4 seconds; second click trashes the file and the bar under the header shows "Moved “name” to the Trash." with Undo and Dismiss for about 8 seconds. No dialogs. Needs a new bridge message pair (`trash` and `untrash`, additive to protocol 1). Open points: sandbox write access to the folder, whether Undo can move the file back out of the Trash under the sandbox, deleting the open document (switch to a new empty document, cancel autosave), and iCloud or in-use files. Mockup approved; the Mac session prompt is written. Must be built and checked on the Mac.
 
 ## Idea
 
