@@ -33,6 +33,7 @@
     return {
       setDictionary(data, supplement) { entries = data || Object.create(null); extra = (data && supplement) || Object.create(null); cache.clear(); lineCache.clear(); },
       word,
+      visible,
       line(text) {
         const hit = lineCache.get(text);
         if (hit) return hit;
@@ -42,8 +43,13 @@
         return out;
       }
     };
+    // Bracketed notes such as [Chorus] or [x2] are not sung, so they are left out of every count.
+    // Matched pairs on one line only; a stray bracket changes nothing.
+    function visible(text) {
+      return text.normalize('NFC').replace(/[’‘]/g, "'").replace(/\[[^\[\]]*\]/g, ' ');
+    }
     function countLine(text) {
-      const tokens = text.normalize('NFC').replace(/[’‘]/g, "'").match(/\p{L}+(?:'\p{L}+)*/gu) || [];
+      const tokens = visible(text).match(/\p{L}+(?:'\p{L}+)*/gu) || [];
       return tokens.reduce((sum, token) => {
         const r = word(token);
         sum.n += r.n;
