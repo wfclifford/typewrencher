@@ -144,6 +144,12 @@
   if (host) {
     fname.addEventListener("input", function () { clearTimeout(renameTimer); renameTimer = setTimeout(commitName, 1000); });
     fname.addEventListener("blur", commitName);
+    // A new document is named "untitled" (or "untitled 2", ...). That is real text, not a placeholder, so selecting
+    // it on focus lets the first keystroke replace it. A click that gives the field focus must not undo the selection.
+    var untitledName = /^untitled( \d+)?$/i, freshClick = false;
+    fname.addEventListener("mousedown", function () { freshClick = document.activeElement !== fname; });
+    fname.addEventListener("focus", function () { if (untitledName.test(fname.value)) fname.select(); });
+    fname.addEventListener("mouseup", function (e) { if (freshClick && untitledName.test(fname.value)) e.preventDefault(); freshClick = false; });
   }
   function syncSave() {
     var empty = ed.value.length === 0;

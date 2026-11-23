@@ -2256,3 +2256,14 @@ test('Mac app: an exported document is never changed without a click; Remove cou
   assert.deepEqual(JSON.parse(JSON.stringify(b.messages.at(-1))), {type: 'textChanged', text: 'cat'});
   b.host().setDocument({text: 'plain', name: 'b.txt'}); assert.equal(n.stripBar.hidden, true, 'the next document clears the offer');
 });
+test('Mac app: the Name field selects a default untitled name when it gets focus, so typing replaces it; other names and browsers are untouched', () => {
+  const b = bootHost(), n = b.nodes; let selected = 0, prevented = 0;
+  n.fname.select = () => { selected++; };
+  b.host().setDocument({text: '', name: 'untitled'});
+  n.fname.emit('mousedown'); n.fname.emit('focus'); n.fname.emit('mouseup', {preventDefault() { prevented++; }});
+  assert.equal(selected, 1, 'untitled is selected on focus'); assert.equal(prevented, 1, 'the click does not clear the selection');
+  b.host().setDocument({text: '', name: 'untitled 12'}); n.fname.emit('focus'); assert.equal(selected, 2, 'untitled 12 too');
+  b.host().setDocument({text: '', name: 'My Poem'}); n.fname.emit('focus'); assert.equal(selected, 2, 'a real name is not selected');
+  n.fname.emit('mousedown'); n.fname.emit('mouseup', {preventDefault() { prevented++; }}); assert.equal(prevented, 1, 'a click on a real name places the caret as usual');
+  const w = boot(), r = w.nodes; let ws = 0; r.fname.select = () => { ws++; }; r.fname.value = 'untitled'; r.fname.emit('focus'); assert.equal(ws, 0, 'browsers keep the placeholder and never select');
+});
