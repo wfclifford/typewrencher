@@ -93,7 +93,10 @@ Widths are my readings of three screenshots the owner supplied (screenshot pixel
   - Split View one third and two thirds: not run. This iPad only offers 50/50.
   - Slide Over: about 320 CSS px (screenshot). Whether the control was hidden was not reported.
   - **Fail, Slide Over:** the header row overflows. The "Name" label shows as "N" and the Export button sits over the name field, so the field cannot be used. Seen in a screenshot. A web (CSS) change would be needed; none made.
-- **Not run on the iPad:** 1.3, 1.5, 1.6, 1.11, 1.12, rotation checks other than the landscape screenshot, and the rest.
+- **1.6 hardware keyboard (owner, iPad, iPadOS 17.7.11): pass.** Typing, undo, redo, arrows, Option-arrow and selection all worked, with no beep reported.
+- **1.3 software keyboard (owner, iPad, portrait and landscape): pass.** Caret line, header and footer all stayed visible in both orientations. This differs from the iPhone, where the header was not reachable with the keyboard open.
+- **1.11 lock Rhymes height (owner, iPad): pass,** locked and unlocked.
+- **Not run on the iPad:** 1.5, 1.12, rotation checks other than the landscape screenshot, and the rest.
 
 **Decision for the owner:** locking the iPhone to portrait is one line in the build settings (`INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone`). "Landscape only with an external keyboard" cannot be set in the plist; it would need code that watches for a keyboard and restricts orientation, which is more than this phase and is not built.
 
