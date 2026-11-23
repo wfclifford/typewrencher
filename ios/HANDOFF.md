@@ -66,7 +66,7 @@ Built on branch `ios-phase-1`. Xcode 27.2 (27B52), simulators iOS 27.2 (iPhone 1
 **Findings (web changes that would be needed or worth deciding; none made).**
 1. **Name field (pull request 43).** The select-on-focus code in `js/app.js` (`fname.addEventListener("focus", ...)`) is not gated on the Mac host, so it also runs on iOS. Whether `select()` works there (iOS Safari often ignores `select()` outside a user gesture and may need `setSelectionRange`) was not run. A device check is needed before deciding whether iOS needs its own handling.
 2. **Trash button.** I found no condition in `js/app.js` that hides the per-row trash button on iOS; the page draws it whenever a host sends a file list. Once the files phase sends `setFiles`, the button will appear unless the web side gets a flag (for example a capability the host reports) or the host never sends it. Not verified at runtime, because the stub sends no list.
-3. **Name field width on a phone.** At 402 pt the field is clipped to about two characters. Possibly acceptable once a name is shown elsewhere, but the owner should look at it on the smallest iPhone (check 1.9).
+3. **Header overflow in narrow windows.** Besides the clipped Name field on iPhone, Slide Over (about 320 CSS px) overlaps the Name field with the Export button. **Name field width on a phone.** At 402 pt the field is clipped to about two characters. Possibly acceptable once a name is shown elsewhere, but the owner should look at it on the smallest iPhone (check 1.9).
 4. **Page background before the page paints.** The web view is white until the page loads; with the dark default this is a white flash on launch. A native background colour would fix it, but the page's tone is not known to Swift, so I left it.
 
 ### Owner's results on the iPhone 14 Pro (iOS 27.2, Debug build run from Xcode, reported by the owner)
@@ -80,6 +80,20 @@ I could not open the owner's screenshots (macOS refused the read), so these are 
 - **1.9:** the file name field is too small (matches finding 3).
 - **1.13 / stubs:** the files drawer opens and is empty; Open and + do nothing; Export shows "couldn't save". All three are the stubbed bridge doing what it was built to do (no `setFiles`, empty replies, and `export` replying "not available yet"), not faults.
 - **Not reported:** 1.2, 1.4, 1.5, 1.7, 1.12, and the iPad checks (1.6, 1.10, and the rest).
+
+### Owner's results on the iPad Pro 10.5-inch (iPadOS 17.7.11, Debug build run from Xcode)
+
+Widths are my readings of three screenshots the owner supplied (screenshot pixels divided by 2, the iPad's scale), not `innerWidth` readings, so treat them as about right, within a few px.
+
+- **1.8 single scene: pass on this iPad.** The owner found no way to open a second window.
+- **1.10 page width:**
+  - Portrait, full screen: 834 CSS px (from the iPad's screen size, not measured). Owner: Page width works.
+  - Landscape, full screen: 1112 CSS px (screenshot). Owner: Page width works. The settings drawer was closed in the screenshot, so I did not see the control myself.
+  - Split View, half: about 551 CSS px (screenshot). Owner: no Page width control, which matches the 800 px rule. Header, editor and footer fit.
+  - Split View one third and two thirds: not run. This iPad only offers 50/50.
+  - Slide Over: about 320 CSS px (screenshot). Whether the control was hidden was not reported.
+  - **Fail, Slide Over:** the header row overflows. The "Name" label shows as "N" and the Export button sits over the name field, so the field cannot be used. Seen in a screenshot. A web (CSS) change would be needed; none made.
+- **Not run on the iPad:** 1.3, 1.5, 1.6, 1.11, 1.12, rotation checks other than the landscape screenshot, and the rest.
 
 **Decision for the owner:** locking the iPhone to portrait is one line in the build settings (`INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone`). "Landscape only with an external keyboard" cannot be set in the plist; it would need code that watches for a keyboard and restricts orientation, which is more than this phase and is not built.
 
