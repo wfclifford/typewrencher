@@ -2031,7 +2031,7 @@ test('trash: arming another row disarms the first; a refreshed list keeps the ar
   trashList(b); assert.equal(n.filesList.children[1].classList.contains('armed'), false, 'it left the list, so it was disarmed');
 });
 test('trash: the second click flushes text and sends { type: trash, name }; the bar says it cannot be undone here, announces it and times out after 12 seconds', async () => {
-  const b = bootHost({}, {reply: m => m.type === 'trash' ? Promise.resolve({ok: true, undoId: 'u1'}) : Promise.resolve()}), n = b.nodes; trashList(b);
+  const b = bootHost({}, {reply: m => m.type === 'trash' ? Promise.resolve({ok: true}) : Promise.resolve()}), n = b.nodes; trashList(b);
   assert.ok(Object.hasOwn(n.trashBar.attrs, 'hidden')); assert.notEqual(n.trashBar.hidden, false, 'hidden until a file is trashed');
   n.ed.value = 'fresh'; n.ed.emit('input');
   trashBtn(n, 1).click(); trashBtn(n, 1).click();
@@ -2045,7 +2045,7 @@ test('trash: the second click flushes text and sends { type: trash, name }; the 
   b.flush(12000); assert.equal(n.trashBar.hidden, true);
 });
 test('trash: the page never sends untrash, and Dismiss closes the bar', async () => {
-  const b = bootHost({}, {reply: m => m.type === 'trash' ? Promise.resolve({ok: true, undoId: 'u7'}) : Promise.resolve({ok: true})}), n = b.nodes; trashList(b);
+  const b = bootHost({}, {reply: m => m.type === 'trash' ? Promise.resolve({ok: true}) : Promise.resolve({ok: true})}), n = b.nodes; trashList(b);
   trashBtn(n, 1).click(); trashBtn(n, 1).click(); await settle();
   assert.equal(b.types().includes('untrash'), false);
   n.trashDismiss.click(); assert.equal(n.trashBar.hidden, true);
@@ -2069,8 +2069,8 @@ test('trash: markup (a bar at the top of the drawer, labelled buttons), styles, 
 });
 test('trash: the protocol is documented in host.js and handled in Swift', () => {
   const header = read('js/host.js'), swift = read('mac/Typewrencher/EditorSession.swift');
-  assert.match(header, /\{ type: 'trash', name \}/); assert.match(header, /\{ type: 'untrash', undoId \}/);
-  assert.match(swift, /case "trash":/); assert.match(swift, /case "untrash":/); assert.match(swift, /trashItem\(at: target, resultingItemURL: &inTrash\)/);
+  assert.match(header, /\{ type: 'trash', name \}/); assert.doesNotMatch(header, /untrash/); assert.doesNotMatch(swift, /untrash|undoId/);
+  assert.match(swift, /case "trash":/); assert.match(swift, /trashItem\(at: target, resultingItemURL: nil\)/);
 });
 test('host: dropping a file does not replace the document; the native side opens files', () => {
   const b = bootHost(), n = b.nodes; let prevented = false;
