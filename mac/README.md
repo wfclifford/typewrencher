@@ -37,6 +37,7 @@ stays the editor. Every document is a real `.txt` file from the moment it exists
 
 - The sandbox grants the file you open, not its folder. Folders are granted once with an Open panel at that folder ("Allow Access"): from the drawer, when renaming, and for the documents folder. `FolderFiles.swift` keeps each grant as a security-scoped bookmark. No extra entitlement is needed.
 - Renaming, creating files and atomic saves need the folder. Without it, saves rewrite the file in place.
+- Each drawer row has a trash button (click twice: "Delete?" arms it for 4 seconds). `FileManager.trashItem` moves the file to the Trash and the app keeps the resulting URL, so the bar's Undo can move it back. Trashing needs the folder grant, like renaming. Trashing the open document switches the window to a new untitled file.
 - Being able to list a folder is not permission to open its files (Documents synced with iCloud allow the first but not the second), so the drawer counts a folder as granted only with a saved grant.
 - The sandbox allows User Selected File (Read/Write) and Outgoing Connections (Client). WebKit's processes need the network entitlement to start; the page's Content Security Policy still limits which hosts it can reach.
 - Keep bridge protocol 1 compatible. If it must change, update `js/host.js`, `window.TypewrencherHost` in `js/app.js` and `EditorSession.swift` together.

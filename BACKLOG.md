@@ -14,10 +14,14 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Ready
 
+- **Delete files from the files drawer (Mac app only).** Decided: the file moves to the macOS Trash (not permanent delete), with Undo. Hover or focus shows a trash button in place of the date; first click arms it as "Delete?" for 4 seconds; second click trashes the file and the bar under the header shows "Moved “name” to the Trash." with Undo and Dismiss for about 8 seconds. No dialogs. Needs a new bridge message pair (`trash` and `untrash`, additive to protocol 1). Open points: sandbox write access to the folder, whether Undo can move the file back out of the Trash under the sandbox, deleting the open document (switch to a new empty document, cancel autosave), and iCloud or in-use files. Mockup approved; the Mac session prompt is written. Must be built and checked on the Mac.
 
 ## Idea
 
 - **"Set as default" in settings.** A button in the settings drawer that saves every setting as it is currently configured (tone, theme, font, text size, wrap, page width, counts, dictionary and Rhymes options, and the rest) as the person's own defaults, so "Reset to defaults" returns to those instead of the built-in ones (retro_term, Dark, Mono and so on). Per-device, like the other settings. Open questions: a way to go back to the built-in defaults, what the button label shows once it has been used (inline, no dialogs), whether Mac-only settings such as the files drawer are included, and how it should work with the host bridge on Mac and iOS.
+- **Lyrics: section awareness.** Builds on the bracket rule (shipped). Treat `[Verse]`, `[Chorus]` or `Bridge:` lines as stanza starts and show a syllable subtotal per section. Plain text only.
+- **Lyrics: line-match view.** Compare verse 2 to verse 1 line by line and flag lines whose syllable counts differ, so lyrics fit the same melody. Uses sections.
+- **Lyrics: internal rhyme highlighting.** Link matching sounds inside and across lines. Related to the alliteration and assonance idea below.
 - **Syllable targets per line.** Pick a form (haiku 5-7-5, tanka, limerick, or a custom count) and the gutter shows whether each line is on target, short or over. Builds on the existing line counts; forms live in a small list in settings. Stays inside the editor.
 - **Rhyme scheme labels.** Letters in the margin (A, B, C) showing the scheme, such as ABAB or AABB, found by matching line endings with the rhyme engine. Computed on the device. Needs the rhyme dictionary loaded; decide what to show when it is off (the mockup hides the column). Mockup: a small letter badge beside each line's syllable count, same letter for lines that rhyme, letters distinguished by style as well as color (filled, outlined, tinted), a dim dot for a line with no rhyme partner, and a one-line scheme summary under the editor (for example ABAB). Mocked in the planning chat; not built.
 - **Stress and meter.** CMUdict marks stressed syllables, so a line's stress pattern could be shown and checked against a meter such as iambic pentameter. The most ambitious idea. Needs care with words that have several pronunciations (the app already marks those "variable").
@@ -32,10 +36,10 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 ## Testing
 
 
-- **Keyboard-open Rhymes layout.** Header line plus one or two chip rows, switching at 420px visible height (`kb-tall`). Verified in Chromium only. Needs real iOS and Android devices; the 420px cutoff may need tuning.
-- **Live Pages deploy** at the new `typewrencher` address.
-
 ## Done
+- Export marker and removing counts on Open: exports with counts or totals start with `Typewrencher Export: <name>`, which shows in the saved file only. Opening one in a browser removes the marker line, summary and counts, so the editor shows the original text; the Mac app, and older exports without the marker, show a "Remove counts / Keep" bar instead. Tried in the web app by the owner and works. Not yet tried in Safari on iOS or the Mac app.
+- Keyboard-open Rhymes layout (header line plus one or two chip rows, switching at 420px visible height): tried by the owner on a real device and passes.
+- Live Pages deploy at the `typewrencher` address: confirmed working.
 - **Width controls (desktop and tablet).** Settings control with a few fixed steps (Narrow, Standard, Wide; Standard equals today) that widens the UI and line length. Today `.app` has `max-width: 62rem`; drive that from an app-wide per-device setting. Show it only on wide screens (desktop, Mac, iPad); hide it on phones and narrow windows. Check that the syllable gutter, line wrapping and per-line counts stay aligned at every step, font and size. Standard must look exactly as it does now. Add tests. Released in 0.1.17. Checked by the owner on iPad and iPhone; the Mac app check is still open (see `mac/HANDOFF.md`).
 
 - **Lock Rhymes height.** Settings toggle (per-device, off by default) that holds the Rhymes panel at its tallest setting even when there are few or no rhymes, so the editor above it stops resizing while typing. Desktop layout: panel `max-height` is 9rem in `.rhyme-panel`, so give it that as a fixed height when locked. Keyboard-open layout (`html.kb`): the tall row set is `max-height: 4.7rem` under `kb-tall`; lock it to that only when `kb-tall` applies, never on short viewports, and keep the editor's three-line minimum. Only when the panel is open. Follow the existing settings pattern, add the toggle to the drawer, and add tests. Check on real iOS devices; the keyboard-open layout is still unverified there. Released in 0.1.17. Checked by the owner on iPad and iPhone; the Mac app check is still open (see `mac/HANDOFF.md`).

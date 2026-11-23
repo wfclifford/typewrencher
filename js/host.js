@@ -19,6 +19,10 @@
 //     { type: 'files', open }                      the files drawer opened or closed; while open, send setFiles
 //     { type: 'grantFolder' }                      ask the person for access to the document's folder
 //     { type: 'openFile', name }                   switch this window to that file in the folder (saving this one)
+//     { type: 'trash', name }                      move that file (a name from setFiles, with .txt) in the document's
+//                                                  folder to the Trash. Reply { ok: true }, or an error string
+//                                                  (a short reason such as "no permission") that rejects the promise.
+//                                                  Trashing the open document switches to a new empty one first.
 //   native -> page, by calling window.TypewrencherHost (defined in js/app.js)
 //     setDocument({ text, name })                  show this text and name; sends neither textChanged nor rename back
 //     setFiles({ access, folder, path, current, files: [{ name, modified }] })

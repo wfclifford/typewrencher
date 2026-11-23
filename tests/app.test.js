@@ -132,7 +132,7 @@ test('default export is the plain text; counts and totals can still be switched 
   const c = boot(), n = c.nodes;
   n.exportCounts.checked = true; n.exportCounts.emit('change'); n.exportTotals.checked = true; n.exportTotals.emit('change');
   n.ed.value = 'cat'; n.fname.value = 'Poem'; n.ed.emit('input'); n.save.click();
-  assert.match(c.download, /Poem\nLines: 1 \| Words: 1 \| Syllables: 1/); assert.match(c.download, /cat  \(1\)/);
+  assert.equal(c.download, 'Typewrencher Export: Poem\nLines: 1 | Words: 1 | Syllables: 1\n\ncat  (1)');
   assert.equal(AppPreferences.create({getItem: k => (k === 'syl-counts' ? 'on' : null)}).get('syl-counts'), 'on', 'a saved choice still wins');
 });
 test('confirmed erase clears text and filename', () => {
@@ -203,6 +203,15 @@ test('lookup and cache invalidation', () => {
   const c = SyllableCounter.create(); c.setDictionary({hello:[2], fire:[1,2]});
   assert.deepEqual(c.line('hello fire zorb'), {n:4,words:3,estimated:1,variable:1});
   c.setDictionary(null); assert.equal(c.word('hello').estimated, true);
+});
+test('bracketed notes are left out of line and word counts', () => {
+  const c = SyllableCounter.create(); c.setDictionary({hello:[2], fire:[1,2], chorus:[2], love:[1]});
+  assert.deepEqual(c.line('[Chorus]'), {n:0,words:0,estimated:0,variable:0});
+  assert.deepEqual(c.line('hello [chorus] love [x2]'), c.line('hello love'));
+  assert.equal(c.line('hello[chorus]love').words, 2);
+  assert.equal(c.line('hello [unclosed love').words, 3, 'a stray bracket changes nothing');
+  assert.equal(c.line('hello (chorus) love').words, 3, 'parentheses still count');
+  assert.equal(c.visible('a [b [c] d] e').includes('c'), false);
 });
 test('parser orders alternate pronunciations', async () => {
   const d = await SyllableCounter.parse('fire(2) F AY1 ER0\nfire F AY1 R\n'); assert.deepEqual(d.fire, [1,2]);
@@ -1835,8 +1844,7 @@ test('host: setDocument keeps a clamped selection and tolerates missing fields',
 test('host: exportText gives the text the native File > Export saves, with counts and totals when on', () => {
   const b = bootHost({'syl-counts': 'on', 'syl-totals': 'on'});
   b.host().setDocument({text: 'cat', name: 'Poem.txt'});
-  assert.match(b.host().exportText(), /Poem\nLines: 1 \| Words: 1 \| Syllables: 1/);
-  assert.match(b.host().exportText(), /cat  \(1\)/);
+  assert.equal(b.host().exportText(), 'Typewrencher Export: Poem\nLines: 1 | Words: 1 | Syllables: 1\n\ncat  (1)');
   assert.equal(bootHost().host().exportText(), '', 'plain by default');
 });
 test('host: the skull is a New document button: one press sends unsent text, then new, and erases nothing', () => {
@@ -1991,6 +1999,79 @@ test('files drawer: without folder access it offers to ask; an untitled document
   b.host().setFiles({access: 'none'});
   assert.equal(n.filesFolder.textContent, 'Files'); assert.match(n.filesNote.textContent, /Save this document/); assert.equal(n.filesGrant.hidden, true);
 });
+// ---- Trash (Mac app only; no Undo: the sandbox cannot move files back out of the Trash)
+const trashList = (b, current = 'a.txt') => b.host().setFiles({access: 'granted', folder: 'F', current, files: [{name: 'a.txt', modified: 1}, {name: 'My Poem.txt', modified: 1}]});
+const trashBtn = (n, i) => n.filesList.children[i].children[1];
+test('trash: every row has its own Tab stop with the accessible name "Move <name> to the Trash", after the file button', () => {
+  const b = bootHost(), n = b.nodes; trashList(b);
+  assert.equal(n.filesList.children.length, 2);
+  for (const li of n.filesList.children) { assert.equal(li.children.length, 2); assert.equal(li.children[1].tag, 'button'); assert.equal(li.children[1].className, 'file-trash'); assert.equal(li.children[1].getAttribute('tabindex'), null, 'a natural Tab stop'); }
+  assert.equal(trashBtn(n, 0).getAttribute('aria-label'), 'Move a to the Trash');
+  assert.equal(trashBtn(n, 1).getAttribute('aria-label'), 'Move My Poem to the Trash');
+  assert.equal(n.filesList.children[1].children[0].children[0].textContent, 'My Poem', 'the file button is still first');
+});
+test('trash: the first click arms "Delete?" for 4 seconds and sends nothing; then it reverts', () => {
+  const b = bootHost(), n = b.nodes; trashList(b);
+  trashBtn(n, 1).click();
+  const li = n.filesList.children[1];
+  assert.equal(b.types().includes('trash'), false);
+  assert.ok(li.classList.contains('armed')); assert.equal(trashBtn(n, 1).children[0].textContent, 'Delete?');
+  assert.match(trashBtn(n, 1).getAttribute('aria-label'), /^Delete\? .*My Poem.*Trash/);
+  assert.ok(b.timers.some(t => t.ms === 4000 && !t.done), 'a 4 second timer');
+  b.flush(4000);
+  assert.equal(li.classList.contains('armed'), false); assert.equal(trashBtn(n, 1).children[0].textContent, '');
+  assert.equal(trashBtn(n, 1).getAttribute('aria-label'), 'Move My Poem to the Trash'); assert.equal(b.types().includes('trash'), false);
+});
+test('trash: arming another row disarms the first; a refreshed list keeps the armed row armed, a list without it disarms', () => {
+  const b = bootHost(), n = b.nodes; trashList(b);
+  trashBtn(n, 0).click(); trashBtn(n, 1).click();
+  assert.equal(n.filesList.children[0].classList.contains('armed'), false); assert.ok(n.filesList.children[1].classList.contains('armed'));
+  trashList(b); assert.ok(n.filesList.children[1].classList.contains('armed'), 'still armed after setFiles');
+  b.host().setFiles({access: 'granted', folder: 'F', current: 'a.txt', files: [{name: 'a.txt', modified: 1}]});
+  trashList(b); assert.equal(n.filesList.children[1].classList.contains('armed'), false, 'it left the list, so it was disarmed');
+});
+test('trash: the second click flushes text and sends { type: trash, name }; the bar says it cannot be undone here, announces it and times out after 12 seconds', async () => {
+  const b = bootHost({}, {reply: m => m.type === 'trash' ? Promise.resolve({ok: true}) : Promise.resolve()}), n = b.nodes; trashList(b);
+  assert.ok(Object.hasOwn(n.trashBar.attrs, 'hidden')); assert.notEqual(n.trashBar.hidden, false, 'hidden until a file is trashed');
+  n.ed.value = 'fresh'; n.ed.emit('input');
+  trashBtn(n, 1).click(); trashBtn(n, 1).click();
+  assert.deepEqual(plain(b.messages.slice(1)), [{type: 'textChanged', text: 'fresh'}, {type: 'trash', name: 'My Poem.txt'}]);
+  await settle();
+  const said = 'Moved \u201cMy Poem\u201d to the Trash. This can\u2019t be undone here; to get it back, open the Trash in Finder.';
+  assert.equal(n.trashBar.hidden, false); assert.equal(n.trashMsg.textContent, said);
+  assert.equal(n.trashUndo, undefined, 'there is no Undo button');
+  b.flush(60); assert.equal(n.status.textContent, said, 'the status line announces it');
+  assert.equal(n.filesList.children[1].classList.contains('armed'), false);
+  b.flush(12000); assert.equal(n.trashBar.hidden, true);
+});
+test('trash: the page never sends untrash, and Dismiss closes the bar', async () => {
+  const b = bootHost({}, {reply: m => m.type === 'trash' ? Promise.resolve({ok: true}) : Promise.resolve({ok: true})}), n = b.nodes; trashList(b);
+  trashBtn(n, 1).click(); trashBtn(n, 1).click(); await settle();
+  assert.equal(b.types().includes('untrash'), false);
+  n.trashDismiss.click(); assert.equal(n.trashBar.hidden, true);
+  assert.equal(/id="trashUndo"/.test(read('index.html')), false);
+});
+test('trash: a refusal from the native side shows its reason inline', async () => {
+  const b = bootHost({}, {reply: m => m.type === 'trash' ? Promise.reject(new Error('no permission')) : Promise.resolve()}), n = b.nodes; trashList(b);
+  trashBtn(n, 0).click(); trashBtn(n, 0).click(); await settle();
+  assert.equal(n.trashBar.hidden, false); assert.equal(n.trashMsg.textContent, 'Couldn\u2019t move \u201ca\u201d to the Trash: no permission.');
+});
+test('trash: markup (a bar at the top of the drawer, labelled buttons), styles, and browsers are unchanged', () => {
+  const html = read('index.html'), css = read('css/styles.css');
+  assert.ok(html.indexOf('id="filesPanel"') < html.indexOf('id="trashBar"') && html.indexOf('id="trashBar"') < html.indexOf('id="filesFolder"'), 'the bar sits at the top of the drawer, so the text area does not move');
+  assert.match(html, /<div id="trashBar" class="strip-bar trash-bar" role="group" aria-label="Moved to the Trash" hidden>/);
+  assert.match(css, /\.files-list li:hover \.file-trash, \.files-list li:has\(:focus-visible\) \.file-trash \{ opacity: 1; \}/);
+  assert.match(css, /\.files-list li\.armed \.file \{ padding-right:/, 'an armed row shortens the name');
+  assert.match(css, /\.file-trash:focus-visible \{ outline:/);
+  const w = boot(); // a browser: no files drawer, no bridge, no trash
+  assert.notEqual(w.nodes.trashBar.hidden, false); assert.equal(w.document.documentElement.getAttribute('data-host'), null);
+  assert.equal(w.nodes.filesList.children.length, 0);
+});
+test('trash: the protocol is documented in host.js and handled in Swift', () => {
+  const header = read('js/host.js'), swift = read('mac/Typewrencher/EditorSession.swift');
+  assert.match(header, /\{ type: 'trash', name \}/); assert.doesNotMatch(header, /untrash/); assert.doesNotMatch(swift, /untrash|undoId/);
+  assert.match(swift, /case "trash":/); assert.match(swift, /trashItem\(at: target, resultingItemURL: nil\)/);
+});
 test('host: dropping a file does not replace the document; the native side opens files', () => {
   const b = bootHost(), n = b.nodes; let prevented = false;
   n.ed.value = 'keep me'; n.ed.emit('input');
@@ -2120,4 +2201,64 @@ test('Page width: at Narrow the open files drawer (Mac app) widens the page by i
   // 15.75rem is the drawer's width plus the row's gap.
   assert.match(css, /\.files-panel \{\n  width: 15rem;/);
   assert.match(css, /\.work \{[^}]*gap: 0\.75rem;/);
+});
+
+// ---- Exports carry a marker; opening one takes the syllable counts back out
+const hasWord = line => /\p{L}/u.test(line);
+test('AppEditor.strip: a marked export loses the marker, the summary and the counts, and nothing else', () => {
+  const r = AppEditor.strip('Typewrencher Export: Poem\nLines: 2 | Words: 6 | Syllables: 8\n\nYou know these creeps.  (4)\n\nsee note  (3)', hasWord);
+  assert.deepEqual({...r}, {looks: true, marked: true, text: 'You know these creeps.\n\nsee note'});
+  const c = AppEditor.strip('Typewrencher Export: Poem\n\nYou know these creeps.  (4)\n(3)', hasWord);
+  assert.equal(c.text, 'You know these creeps.\n(3)', 'a counts-only export; a line with no words keeps its (3)');
+});
+test('AppEditor.strip: older exports are recognised without a marker', () => {
+  assert.deepEqual({...AppEditor.strip('Poem\nLines: 1 | Words: 1 | Syllables: 1\n\ncat  (1)', hasWord)}, {looks: true, marked: false, text: 'cat'});
+  const counts = AppEditor.strip('one two  (2)\nthree four  (2)\n\nfive six  (2)', hasWord);
+  assert.deepEqual({...counts}, {looks: true, marked: false, text: 'one two\nthree four\n\nfive six'});
+});
+test('AppEditor.strip: ordinary writing is left alone, even with a stray "(3)" ending', () => {
+  for (const text of ['You know these creeps.', 'see note  (3)', 'a  (1)\nb\nc\nd', 'one (2)\ntwo (2)', 'Lines: 1 | Words: 1 | Syllables: 1']) {
+    assert.deepEqual({...AppEditor.strip(text, hasWord)}, {looks: false, marked: false, text}, text);
+  }
+});
+test('exports: plain stays plain; counts only and totals both start with the Typewrencher Export line', () => {
+  const run = saved => { const b = boot(saved), n = b.nodes; n.ed.value = 'cat\n\ndog house'; n.fname.value = 'Poem'; n.ed.emit('input'); n.save.click(); return b.download; };
+  assert.equal(run({}), 'cat\n\ndog house');
+  assert.equal(run({'syl-counts': 'on'}), 'Typewrencher Export: Poem\n\ncat  (1)\n\ndog house  (2)');
+  assert.equal(run({'syl-totals': 'on'}), 'Typewrencher Export: Poem\nLines: 2 | Words: 3 | Syllables: 3\n\ncat\n\ndog house');
+  assert.equal(run({'syl-counts': 'on', 'syl-totals': 'on'}), 'Typewrencher Export: Poem\nLines: 2 | Words: 3 | Syllables: 3\n\ncat  (1)\n\ndog house  (2)');
+});
+test('Open in a browser: a marked export opens clean; a lookalike opens as is and offers to remove the counts', async () => {
+  const bytes = text => Array.from(Buffer.from(text));
+  const b = boot(); await openIn(b, fileOf(bytes('Typewrencher Export: Poem\n\ncat  (1)\ndog house  (2)'), 'Poem.txt'));
+  assert.equal(b.nodes.ed.value, 'cat\ndog house'); assert.notEqual(b.nodes.stripBar.hidden, false);
+  const c = boot(); await openIn(c, fileOf(bytes('cat  (1)\ndog house  (2)'), 'old.txt'));
+  assert.equal(c.nodes.ed.value, 'cat  (1)\ndog house  (2)'); assert.equal(c.nodes.stripBar.hidden, false);
+  assert.equal(c.nodes.stripMsg.textContent, 'This looks like an export with syllable counts.');
+  c.nodes.stripYes.click(); assert.equal(c.nodes.ed.value, 'cat\ndog house'); assert.equal(c.nodes.stripBar.hidden, true);
+  const d = boot(); await openIn(d, fileOf(bytes('cat  (1)\ndog house  (2)'), 'old.txt')); d.nodes.stripNo.click();
+  assert.equal(d.nodes.ed.value, 'cat  (1)\ndog house  (2)'); assert.equal(d.nodes.stripBar.hidden, true);
+  const e = boot(); await openIn(e, fileOf(bytes('cat  (1)\ndog house  (2)'), 'old.txt')); e.nodes.ed.value = 'cat  (1)\ndog house  (2)!'; e.nodes.ed.emit('input');
+  assert.equal(e.nodes.stripBar.hidden, true, 'typing withdraws the offer');
+  const f = boot(); await openIn(f, fileOf(bytes('plain words\nmore words'), 'plain.txt')); assert.notEqual(f.nodes.stripBar.hidden, false);
+});
+test('Mac app: an exported document is never changed without a click; Remove counts saves the clean text', () => {
+  const b = bootHost(), n = b.nodes;
+  b.host().setDocument({text: 'Typewrencher Export: Poem\n\ncat  (1)', name: 'Poem.txt'});
+  assert.equal(n.ed.value, 'Typewrencher Export: Poem\n\ncat  (1)'); assert.equal(n.stripBar.hidden, false);
+  assert.equal(n.stripMsg.textContent, 'This file was exported from Typewrencher with syllable counts.');
+  n.stripYes.click(); assert.equal(n.ed.value, 'cat'); b.flush(300);
+  assert.deepEqual(JSON.parse(JSON.stringify(b.messages.at(-1))), {type: 'textChanged', text: 'cat'});
+  b.host().setDocument({text: 'plain', name: 'b.txt'}); assert.equal(n.stripBar.hidden, true, 'the next document clears the offer');
+});
+test('Mac app: the Name field selects a default untitled name when it gets focus, so typing replaces it; other names and browsers are untouched', () => {
+  const b = bootHost(), n = b.nodes; let selected = 0, prevented = 0;
+  n.fname.select = () => { selected++; };
+  b.host().setDocument({text: '', name: 'untitled'});
+  n.fname.emit('mousedown'); n.fname.emit('focus'); n.fname.emit('mouseup', {preventDefault() { prevented++; }});
+  assert.equal(selected, 1, 'untitled is selected on focus'); assert.equal(prevented, 1, 'the click does not clear the selection');
+  b.host().setDocument({text: '', name: 'untitled 12'}); n.fname.emit('focus'); assert.equal(selected, 2, 'untitled 12 too');
+  b.host().setDocument({text: '', name: 'My Poem'}); n.fname.emit('focus'); assert.equal(selected, 2, 'a real name is not selected');
+  n.fname.emit('mousedown'); n.fname.emit('mouseup', {preventDefault() { prevented++; }}); assert.equal(prevented, 1, 'a click on a real name places the caret as usual');
+  const w = boot(), r = w.nodes; let ws = 0; r.fname.select = () => { ws++; }; r.fname.value = 'untitled'; r.fname.emit('focus'); assert.equal(ws, 0, 'browsers keep the placeholder and never select');
 });
