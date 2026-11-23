@@ -18,6 +18,7 @@ Personal working list for Typewrencher. This project does not take issues, pull 
 
 ## Idea
 
+- **"Set as default" in settings.** A button in the settings drawer that saves every setting as it is currently configured (tone, theme, font, text size, wrap, page width, counts, dictionary and Rhymes options, and the rest) as the person's own defaults, so "Reset to defaults" returns to those instead of the built-in ones (retro_term, Dark, Mono and so on). Per-device, like the other settings. Open questions: a way to go back to the built-in defaults, what the button label shows once it has been used (inline, no dialogs), whether Mac-only settings such as the files drawer are included, and how it should work with the host bridge on Mac and iOS.
 - **Lyrics: section awareness.** Builds on the bracket rule (shipped). Treat `[Verse]`, `[Chorus]` or `Bridge:` lines as stanza starts and show a syllable subtotal per section. Plain text only.
 - **Lyrics: line-match view.** Compare verse 2 to verse 1 line by line and flag lines whose syllable counts differ, so lyrics fit the same melody. Uses sections.
 - **Lyrics: internal rhyme highlighting.** Link matching sounds inside and across lines. Related to the alliteration and assonance idea below.
