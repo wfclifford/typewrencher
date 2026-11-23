@@ -97,6 +97,8 @@ Widths are my readings of three screenshots the owner supplied (screenshot pixel
 - **1.3 software keyboard (owner, iPad, portrait and landscape): pass.** Caret line, header and footer all stayed visible in both orientations. This differs from the iPhone, where the header was not reachable with the keyboard open.
 - **1.11 lock Rhymes height (owner, iPad): pass,** locked and unlocked.
 - **1.5 gutter alignment (owner): pass on both the iPhone 14 Pro and the iPad Pro 10.5-inch.** The owner tried every text size the app offers, in portrait and landscape, with wrapping on and off. The seven size names and the paragraph length were not recorded.
+- **1.2 settings persist (owner): pass.** Font, color tone and theme survived a force-quit and relaunch. Device was presumably the iPhone 14 Pro (the step was given for it); the owner did not say.
+- **1.7 undo (owner): pass for typing and a paste.** Undo took them back in order. Switching documents is stubbed (the + button does nothing), so that part is **not run**.
 - **Not run on the iPad:** 1.12, rotation checks other than the landscape screenshot, and the rest.
 
 **Decision for the owner:** locking the iPhone to portrait is one line in the build settings (`INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone`). "Landscape only with an external keyboard" cannot be set in the plist; it would need code that watches for a keyboard and restricts orientation, which is more than this phase and is not built.
