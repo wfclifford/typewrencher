@@ -541,30 +541,29 @@
     return d.toLocaleDateString([], opts);
   }
   // Moving a file to the Trash: the first click on a row's trash button arms it ("Delete?", 4 seconds), the
-  // second click sends { type: 'trash', name }. The bar under the header then offers Undo for 8 seconds.
+  // second click sends { type: 'trash', name }. The bar under the header then says it was moved and that it cannot be
+  // undone here (the app cannot take files back out of the Trash), and points to the Trash in Finder.
   var trashBar = document.getElementById("trashBar"), trashMsg = document.getElementById("trashMsg");
-  var trashUndo = document.getElementById("trashUndo"), trashDismiss = document.getElementById("trashDismiss");
+  var trashDismiss = document.getElementById("trashDismiss");
   var armedRow = null, armedKept = false, armTimer = null; // the row whose trash button says "Delete?": { name, title, item, btn, label }
-  var trashTimer = null, trashUndoId = null, trashed = "";
+  var trashTimer = null;
   function paintTrash(row, on) {
     row.item.classList.toggle("armed", on);
     row.label.textContent = on ? "Delete?" : "";
-    row.btn.setAttribute("aria-label", on ? "Delete? Click again to move " + row.title + " to the Trash" : "Move " + row.title + " to the Trash");
+    row.btn.setAttribute("aria-label", on ? "Delete? Click again to move " + row.title + " to the Trash. This cannot be undone here" : "Move " + row.title + " to the Trash");
   }
   function disarmTrash() {
     clearTimeout(armTimer); armTimer = null;
     if (armedRow) paintTrash(armedRow, false);
     armedRow = null;
   }
-  function hideTrashBar() { clearTimeout(trashTimer); trashTimer = null; trashUndoId = null; trashBar.hidden = true; }
-  function showTrashBar(message, undoId) {
+  function hideTrashBar() { clearTimeout(trashTimer); trashTimer = null; trashBar.hidden = true; }
+  function showTrashBar(message) {
     clearTimeout(trashTimer);
-    trashUndoId = undoId || null;
     trashMsg.textContent = message;
-    trashUndo.hidden = !undoId;
     trashBar.hidden = false;
-    say(message + (undoId ? " Undo or dismiss." : ""));
-    trashTimer = setTimeout(hideTrashBar, 8000);
+    say(message);
+    trashTimer = setTimeout(hideTrashBar, 12000);
   }
   function whyNot(error) { return String((error && error.message) || error || "unknown error").replace(/\.$/, ""); }
   // The native side replies { ok: true, undoId } or an error string (the promise rejects with it).
@@ -577,8 +576,7 @@
   function moveToTrash(row) {
     host.flush(); // the newest text is on disk before the file goes
     sendTrash({ type: "trash", name: row.name }, function (reply) {
-      trashed = row.title;
-      showTrashBar("Moved \u201c" + row.title + "\u201d to the Trash.", reply.undoId);
+      showTrashBar("Moved \u201c" + row.title + "\u201d to the Trash. This can\u2019t be undone here; to get it back, open the Trash in Finder.");
       ed.focus();
     }, function (reason) { showTrashBar("Couldn\u2019t move \u201c" + row.title + "\u201d to the Trash: " + reason + ".", null); });
   }
@@ -592,20 +590,11 @@
       if (armedRow && armedRow.name === name) { var chosen = armedRow; disarmTrash(); moveToTrash(chosen); return; }
       disarmTrash();
       armedRow = row; paintTrash(row, true);
-      say("Click again to move " + title + " to the Trash.");
+      say("Click again to move " + title + " to the Trash. This cannot be undone here.");
       armTimer = setTimeout(disarmTrash, 4000);
     });
     return btn;
   }
-  trashUndo.addEventListener("click", function () {
-    var id = trashUndoId, title = trashed;
-    if (!id) return;
-    hideTrashBar();
-    sendTrash({ type: "untrash", undoId: id }, function () {
-      showTrashBar("Restored \u201c" + title + "\u201d.", null);
-    }, function (reason) { showTrashBar("Couldn\u2019t restore \u201c" + title + "\u201d: " + reason + ".", null); });
-    ed.focus();
-  });
   trashDismiss.addEventListener("click", function () { hideTrashBar(); ed.focus(); });
 
   // state: { access: 'granted' | 'needed' | 'none', folder, path, current, files: [{ name, modified }] }
