@@ -23,8 +23,9 @@
 //                                                  folder to the Trash. Reply { ok: true, undoId }, or an error string
 //                                                  (a short reason such as "no permission") that rejects the promise.
 //                                                  Trashing the open document switches to a new empty one first.
-//     { type: 'untrash', undoId }                  put a file trashed by 'trash' back where it was. Reply { ok: true },
-//                                                  or an error string; nothing is overwritten.
+//     { type: 'untrash', undoId }                  put a file trashed by 'trash' back where it was. No longer sent by the
+//                                                  page (the sandbox does not allow moving files out of the Trash), still
+//                                                  handled. Reply { ok: true }, or an error string; nothing is overwritten.
 //   native -> page, by calling window.TypewrencherHost (defined in js/app.js)
 //     setDocument({ text, name })                  show this text and name; sends neither textChanged nor rename back
 //     setFiles({ access, folder, path, current, files: [{ name, modified }] })
