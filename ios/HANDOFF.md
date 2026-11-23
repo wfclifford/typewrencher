@@ -100,7 +100,8 @@ Widths are my readings of three screenshots the owner supplied (screenshot pixel
 - **1.2 settings persist (owner): pass.** Font, color tone and theme survived a force-quit and relaunch. Confirmed by the owner on both the iPhone 14 Pro and the iPad Pro 10.5-inch.
 - **1.7 undo (owner): pass for typing and a paste.** Undo took them back in order. Switching documents is stubbed (the + button does nothing), so that part is **not run**.
 - **1.4 safe areas (owner): pass.** iPhone 14 Pro portrait and landscape (both directions), around the Dynamic Island, rounded corners and home indicator, and the iPad Pro 10.5-inch. This replaces my simulator-only "partial pass" in the table above.
-- **Not run on the iPad:** 1.12, rotation checks other than the landscape screenshot, and the rest.
+- **1.12 rhyme mark (owner): pass.** Reported as passing for every tone in system light and dark, on the iPhone 14 Pro (the step was given for it). The owner did not list the tones one by one, and did not say whether the iPad was also checked.
+- **Not run on the iPad:** 1.13 and the Slide Over Page width control; anything not listed above.
 
 **Decision for the owner:** locking the iPhone to portrait is one line in the build settings (`INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone`). "Landscape only with an external keyboard" cannot be set in the plist; it would need code that watches for a keyboard and restricts orientation, which is more than this phase and is not built.
 
