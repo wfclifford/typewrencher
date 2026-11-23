@@ -1999,7 +1999,7 @@ test('files drawer: without folder access it offers to ask; an untitled document
   b.host().setFiles({access: 'none'});
   assert.equal(n.filesFolder.textContent, 'Files'); assert.match(n.filesNote.textContent, /Save this document/); assert.equal(n.filesGrant.hidden, true);
 });
-// ---- Trash with Undo (Mac app only)
+// ---- Trash (Mac app only; no Undo: the sandbox cannot move files back out of the Trash)
 const trashList = (b, current = 'a.txt') => b.host().setFiles({access: 'granted', folder: 'F', current, files: [{name: 'a.txt', modified: 1}, {name: 'My Poem.txt', modified: 1}]});
 const trashBtn = (n, i) => n.filesList.children[i].children[1];
 test('trash: every row has its own Tab stop with the accessible name "Move <name> to the Trash", after the file button', () => {
@@ -2030,36 +2030,31 @@ test('trash: arming another row disarms the first; a refreshed list keeps the ar
   b.host().setFiles({access: 'granted', folder: 'F', current: 'a.txt', files: [{name: 'a.txt', modified: 1}]});
   trashList(b); assert.equal(n.filesList.children[1].classList.contains('armed'), false, 'it left the list, so it was disarmed');
 });
-test('trash: the second click flushes text and sends { type: trash, name }; the bar shows Moved, Undo, Dismiss, announces it and times out after 8 seconds', async () => {
+test('trash: the second click flushes text and sends { type: trash, name }; the bar says it cannot be undone here, announces it and times out after 12 seconds', async () => {
   const b = bootHost({}, {reply: m => m.type === 'trash' ? Promise.resolve({ok: true, undoId: 'u1'}) : Promise.resolve()}), n = b.nodes; trashList(b);
   assert.ok(Object.hasOwn(n.trashBar.attrs, 'hidden')); assert.notEqual(n.trashBar.hidden, false, 'hidden until a file is trashed');
   n.ed.value = 'fresh'; n.ed.emit('input');
   trashBtn(n, 1).click(); trashBtn(n, 1).click();
   assert.deepEqual(plain(b.messages.slice(1)), [{type: 'textChanged', text: 'fresh'}, {type: 'trash', name: 'My Poem.txt'}]);
   await settle();
-  assert.equal(n.trashBar.hidden, false); assert.equal(n.trashMsg.textContent, 'Moved \u201cMy Poem\u201d to the Trash.');
-  assert.equal(n.trashUndo.hidden, false);
-  b.flush(60); assert.match(n.status.textContent, /Moved .My Poem. to the Trash\. Undo or dismiss\./, 'the status line announces it');
+  const said = 'Moved \u201cMy Poem\u201d to the Trash. This can\u2019t be undone here; to get it back, open the Trash in Finder.';
+  assert.equal(n.trashBar.hidden, false); assert.equal(n.trashMsg.textContent, said);
+  assert.equal(n.trashUndo, undefined, 'there is no Undo button');
+  b.flush(60); assert.equal(n.status.textContent, said, 'the status line announces it');
   assert.equal(n.filesList.children[1].classList.contains('armed'), false);
-  b.flush(8000); assert.equal(n.trashBar.hidden, true);
+  b.flush(12000); assert.equal(n.trashBar.hidden, true);
 });
-test('trash: Undo sends the undoId, confirms inline, and Dismiss closes the bar', async () => {
+test('trash: the page never sends untrash, and Dismiss closes the bar', async () => {
   const b = bootHost({}, {reply: m => m.type === 'trash' ? Promise.resolve({ok: true, undoId: 'u7'}) : Promise.resolve({ok: true})}), n = b.nodes; trashList(b);
   trashBtn(n, 1).click(); trashBtn(n, 1).click(); await settle();
-  n.trashUndo.click(); await settle();
-  assert.deepEqual(plain(b.messages.at(-1)), {type: 'untrash', undoId: 'u7'});
-  assert.equal(n.trashMsg.textContent, 'Restored \u201cMy Poem\u201d.'); assert.equal(n.trashUndo.hidden, true, 'nothing left to undo');
+  assert.equal(b.types().includes('untrash'), false);
   n.trashDismiss.click(); assert.equal(n.trashBar.hidden, true);
+  assert.equal(/id="trashUndo"/.test(read('index.html')), false);
 });
-test('trash: a refusal from the native side shows its reason inline, with no Undo', async () => {
+test('trash: a refusal from the native side shows its reason inline', async () => {
   const b = bootHost({}, {reply: m => m.type === 'trash' ? Promise.reject(new Error('no permission')) : Promise.resolve()}), n = b.nodes; trashList(b);
   trashBtn(n, 0).click(); trashBtn(n, 0).click(); await settle();
-  assert.equal(n.trashBar.hidden, false); assert.equal(n.trashMsg.textContent, 'Couldn\u2019t move \u201ca\u201d to the Trash: no permission.'); assert.equal(n.trashUndo.hidden, true);
-});
-test('trash: an Undo that fails (a file with that name exists now) says so inline', async () => {
-  const b = bootHost({}, {reply: m => m.type === 'trash' ? Promise.resolve({ok: true, undoId: 'u2'}) : m.type === 'untrash' ? Promise.reject(new Error('a file with that name is in the folder now')) : Promise.resolve()}), n = b.nodes; trashList(b);
-  trashBtn(n, 1).click(); trashBtn(n, 1).click(); await settle(); n.trashUndo.click(); await settle();
-  assert.match(n.trashMsg.textContent, /^Couldn\u2019t restore \u201cMy Poem\u201d: a file with that name is in the folder now\.$/); assert.equal(n.trashUndo.hidden, true);
+  assert.equal(n.trashBar.hidden, false); assert.equal(n.trashMsg.textContent, 'Couldn\u2019t move \u201ca\u201d to the Trash: no permission.');
 });
 test('trash: markup (a bar at the top of the drawer, labelled buttons), styles, and browsers are unchanged', () => {
   const html = read('index.html'), css = read('css/styles.css');
