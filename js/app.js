@@ -566,7 +566,7 @@
     trashTimer = setTimeout(hideTrashBar, 12000);
   }
   function whyNot(error) { return String((error && error.message) || error || "unknown error").replace(/\.$/, ""); }
-  // The native side replies { ok: true, undoId } or an error string (the promise rejects with it).
+  // The native side replies { ok: true } or an error string (the promise rejects with it).
   function sendTrash(message, then, failed) {
     Promise.resolve(host.post(message)).then(function (reply) {
       if (!reply || reply.ok !== true) throw new Error("no answer from the app");
