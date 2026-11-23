@@ -69,6 +69,22 @@ Built on branch `ios-phase-1`. Xcode 27.2 (27B52), simulators iOS 27.2 (iPhone 1
 3. **Name field width on a phone.** At 402 pt the field is clipped to about two characters. Possibly acceptable once a name is shown elsewhere, but the owner should look at it on the smallest iPhone (check 1.9).
 4. **Page background before the page paints.** The web view is white until the page loads; with the dark default this is a white flash on launch. A native background colour would fix it, but the page's tone is not known to Swift, so I left it.
 
+### Owner's results on the iPhone 14 Pro (iOS 27.2, Debug build run from Xcode, reported by the owner)
+
+I could not open the owner's screenshots (macOS refused the read), so these are the owner's words, not my observations.
+
+- **1.1:** the app runs and shows the page on the device.
+- **1.3 portrait, software keyboard:** the caret line stays visible (pass). The header does not stay reachable while the keyboard is open; the footer does. Whether that is the page's intended keyboard-open layout or a fault was not decided, and `html.kb` was not inspected.
+- **1.3 landscape:** the owner reports there is not enough room for the keyboard and enough of the interface to work, and suggests landscape should not be offered on the iPhone unless an external keyboard is attached. Not changed: this is the owner's decision (see below).
+- **1.11 (lock Rhymes height), portrait, keyboard open:** the Rhymes panel works correctly with the lock on and off.
+- **1.9:** the file name field is too small (matches finding 3).
+- **1.13 / stubs:** the files drawer opens and is empty; Open and + do nothing; Export shows "couldn't save". All three are the stubbed bridge doing what it was built to do (no `setFiles`, empty replies, and `export` replying "not available yet"), not faults.
+- **Not reported:** 1.2, 1.4, 1.5, 1.7, 1.12, and the iPad checks (1.6, 1.10, and the rest).
+
+**Decision for the owner:** locking the iPhone to portrait is one line in the build settings (`INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone`). "Landscape only with an external keyboard" cannot be set in the plist; it would need code that watches for a keyboard and restricts orientation, which is more than this phase and is not built.
+
+**Deployment target:** the owner's iPad runs iPadOS 17.7.11, so the iOS 18.0 target above would not install there. It is being lowered to 17.0 (builds for the simulator; the change is in the working tree and not yet committed because that file also carries the owner's team ID).
+
 **For the owner to run on devices:** 1.3 to 1.6, 1.10 and 1.11 as listed, plus 1.2, 1.7, 1.9, 1.12, 1.13 and landscape for 1.4. Decision gate (1.3, 1.5): not decided here.
 
 **Notes.** `SiteSchemeHandler.swift` is copied, not shared, so a change to the Mac copy has to be repeated in `ios/Typewrencher/`. The Debug-only log file and the `twdebug` script handler are not compiled into Release builds (the script and file writes are under `#if DEBUG`; the navigation log line still goes to `os.Logger`).
