@@ -41,7 +41,7 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment_retry.outputs.page_url || steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -57,5 +57,15 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+      # deploy-pages sometimes asks for the uploaded site a moment too early and reports "Found 0 artifact(s)" even though
+      # the upload worked (it did on both v4 and v5). So a failed first attempt is retried once, after a pause, against the
+      # artifact that is already uploaded. If the retry fails too, the job fails as before.
       - id: deployment
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+      - name: Wait before retrying the deploy
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 20
+      - id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v5
