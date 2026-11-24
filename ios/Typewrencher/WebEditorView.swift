@@ -11,6 +11,7 @@ struct WebEditorView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.setURLSchemeHandler(SiteSchemeHandler(), forURLScheme: SiteSchemeHandler.scheme)
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "typewrencher")
+        config.userContentController.addUserScript(WKUserScript(source: Self.keyboardInsetFix, injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: .page))
         #if DEBUG
         context.coordinator.installConsoleForwarding(in: config.userContentController)
         #endif
@@ -24,6 +25,19 @@ struct WebEditorView: UIViewRepresentable {
         web.load(URLRequest(url: SiteSchemeHandler.startURL))
         return web
     }
+
+    // The page draws under the notch (viewport-fit=cover) and pins itself to the visible area while the
+    // keyboard is up (html.kb in css/styles.css) with top: 0, which ignores the top safe area. In Safari the
+    // viewport already starts below it; in this full-screen web view the header would sit under the status
+    // bar and the Dynamic Island. This adds the inset back for the pinned layout only, without touching the
+    // shared web files. If css/styles.css ever handles it, delete this.
+    private static let keyboardInsetFix = """
+    (() => {
+      const style = document.createElement('style');
+      style.textContent = 'html.kb .app { top: calc(var(--vvt, 0px) + env(safe-area-inset-top, 0px)); height: calc(var(--vvh, 100%) - env(safe-area-inset-top, 0px)); }';
+      document.head.appendChild(style);
+    })();
+    """
 
     func updateUIView(_ web: WKWebView, context: Context) {}
 
