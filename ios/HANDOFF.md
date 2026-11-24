@@ -229,12 +229,12 @@ Results: see "2a progress" below (filled in as each step is built).
 
 ### 2a progress (branch `ios-phase-2a`, in order)
 
-**Step 1: reopen the last document at launch, or start `untitled.txt` (built; simulator only).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. Not run on the iPhone 14 Pro or the iPad.
+**Step 1: reopen the last document at launch, or start `untitled.txt` (built; simulator, and the Files-app check on the iPhone 14 Pro).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. Otherwise not run on the iPhone or the iPad.
 
 Built: `DocumentStore.swift` (the app's Documents folder; remembers only the last file's name, because the container path changes between installs; creates `untitled.txt`, `untitled 2.txt`, ...), `TextFile.swift` (UTF-8 read), `EditorSession.swift` (on the bridge's `ready`: reopen the last document or start a new one, then `setDocument`; a second `ready` after a page reload shows the open document again; inline `notify` messages; clears the web view's undo history when a new file is shown). `Info.plist` gains `UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace` so the Documents folder shows in the Files app. All other bridge messages are still stubs.
 
 Seen in the simulator (read from the app's container with `simctl`, and from screenshots):
-- 2a.1 part: a fresh install's first launch created an empty `untitled.txt` in the app's Documents folder. **Not run: that it shows in the Files app** (needs a device or the Files app on the simulator); the two plist keys are in the built `Info.plist`.
+- 2a.1: a fresh install's first launch created an empty `untitled.txt` in the app's Documents folder. **Confirmed on the iPhone 14 Pro by the owner: the Files app shows a Typewrencher folder with `untitled.txt` in it (pass).** The owner did not say whether the Name field read "untitled" there; not recorded. Not run on the iPad.
 - A relaunch reused `untitled.txt` (no `untitled 2.txt`).
 - A file containing "Roses are red,\nviolets are blue" was shown after relaunch, with the name "untitled" and 2 lines, 6 words, 9 syllables.
 - 2a.8: a file with invalid UTF-8 bytes was left byte-for-byte unchanged, the app opened a new `untitled N.txt`, and the page showed "Typewrencher couldn't open untitled 3: it is not UTF-8 text." under the counts. (A first version overwrote that reason with a second "couldn't reopen" message; fixed.)
