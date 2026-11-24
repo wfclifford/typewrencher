@@ -641,7 +641,13 @@
     // About: in the Mac app the document is a file that saves itself, and the "+" starts a new one.
     document.getElementById("aboutSkull").textContent = "The plus button starts a new document. Your text is saved to its file as you type.";
     filesBtn.hidden = false;
-    filesBtn.addEventListener("click", function () { setFilesOpen(!filesOpen, true); });
+    filesBtn.addEventListener("click", function (e) {
+      var open = !filesOpen;
+      setFilesOpen(open, true);
+      // Closing the drawer with a finger or the mouse puts the caret back in the text (and brings the keyboard back
+      // on an iPhone or iPad). A keyboard user (click detail 0) keeps focus on the button they pressed.
+      if (!open && e && e.detail > 0) ed.focus();
+    });
     filesGrant.addEventListener("click", function () { host.post({ type: "grantFolder" }); });
   }
 

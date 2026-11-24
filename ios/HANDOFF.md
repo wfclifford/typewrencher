@@ -180,3 +180,13 @@ Status: built, tests pass (243). Rendered at 320 and 402 CSS px in desktop Chrom
 **Change (web).** Under 360 px a failed save shows in the Name row, in place of the word "Name" (a decorative `#fnameNote` span; the status line and the button's accessible name still carry the message), and the Export button stays icon-only. "Done" stays on the button. `flash()` takes a third argument (`failed`), sets `flashing` on the button for "Done" only and `flash-error` on `.savebox` for a failure, and clears both after 2.5 s. At 360 px and wider nothing changes: the failure shows on the button as before. Tests: 244 pass; stamp `--check` current.
 
 **Seen in desktop Chrome through a 320 px and a 402 px iframe, with a bridge that rejects exports.** At 320 px: "Couldn't save" in the Name row, buttons row on one line with an icon-only Export. At 402 px: "Couldn't save" on the button, Name row unchanged. **Owner confirmed on the iPad in Slide Over: pass** ("Couldn't save" in the Name row, Settings stays on the top row). In the iOS app every export fails until the files phase, so the failure message is what Slide Over will show.
+
+## Follow-up: the caret after the files drawer closes (1.13)
+
+Status: built, tests pass (245), seen on the iPhone 17 simulator. **Not run on the iPhone 14 Pro, the iPad, or the Mac app.**
+
+**Problem (owner, iPhone).** Tapping the files drawer button took focus off the text, and closing the drawer did not give it back: the owner had to tap the text to bring the keyboard back.
+
+**Change (web, a site release).** `js/app.js`: when the files drawer button closes the drawer with a finger or the mouse, `ed.focus()` puts the caret back in the text (the keyboard comes back on an iPhone or iPad). Opening it does not touch focus. A click from the keyboard (event `detail` 0, Space or Enter) keeps focus on the button, so a keyboard user does not lose their place. **The Mac app changes too:** a mouse click that closes the drawer now returns the caret to the text there as well; the Mac app was not run. Closing the drawer another way (Reset to defaults) is unchanged. One test added.
+
+**Seen on the iPhone 17 simulator (iOS 27.2, real taps).** With the drawer open and no keyboard, tapping the drawer button closed it, and the keyboard came back with the caret in the text (the hierarchy shows the text view "Keyboard Focused").
