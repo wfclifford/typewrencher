@@ -3,7 +3,7 @@ import WebKit
 import os
 
 // Hosts the web view that runs the page, which is the editor. The bridge hands "ready" to the EditorSession
-// (show the last document) and "textChanged" (autosave); every other message is still a stub (phase 2a). Bridge protocol 1 is unchanged.
+// (show the last document), "textChanged", "new", "files", "openFile" and "rename"; every other message is still a stub (phase 2a). Bridge protocol 1 is unchanged.
 struct WebEditorView: UIViewRepresentable {
     func makeCoordinator() -> Bridge { Bridge() }
 
@@ -84,8 +84,19 @@ struct WebEditorView: UIViewRepresentable {
             case "textChanged":
                 if let newText = body["text"] as? String { session.textChanged(newText) }
                 replyHandler(nil, nil)
+            case "new":
+                session.newDocument()
+                replyHandler(nil, nil)
+            case "files":
+                session.filesDrawer(open: body["open"] as? Bool ?? false)
+                replyHandler(nil, nil)
+            case "openFile":
+                if let name = body["name"] as? String { session.openFile(named: name) }
+                replyHandler(nil, nil)
+            case "rename":
+                session.rename(to: body["name"] as? String ?? "") { error in replyHandler(nil, error) }
             default:
-                replyHandler(nil, nil)   // every other message is still a stub (phase 2a, later steps)
+                replyHandler(nil, nil)   // open, grantFolder, trash, close: still stubs (phase 2a, later steps)
             }
         }
 

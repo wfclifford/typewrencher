@@ -241,7 +241,25 @@ Seen in the simulator (read from the app's container with `simctl`, and from scr
 
 Known, not fixed yet: every launch where the last file cannot be read leaves another empty `untitled N.txt` behind, and an empty untitled file is never cleaned up. That belongs to 2a.4 (decide in Results whether an empty untitled file is removed when left, as on the Mac, or kept).
 
-Not run yet after step 2: switching and undo (2a.3), New (2a.4), rename (2a.5), the Files-app refresh (2a.6), export (2a.7), the alerts check (2a.9).
+**Step 3: the files drawer, switching, New and rename (built; simulator only).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. **Not run on the iPhone 14 Pro or the iPad.** The bridge now also handles `new`, `files`, `openFile` and `rename`; `open`, `grantFolder`, `trash`, `close` and `export` are still stubs.
+
+Decision (owner, 2026-11-24): an empty `untitled` file that this app created is deleted when the person leaves it (iOS has no Trash for app files; nothing is lost; no other file is ever removed). A renamed file is kept even when empty.
+
+Built: `DocumentStore` lists the `.txt` files (newest first), tracks which untitled files the app created (names only), removes an empty one when left, and cleans names like the Mac. `EditorSession` queues operations one at a time, asks the page for its current text before a switch, saves the file being left, treats typing that arrives late (after the switch, before the page shows the new file) as belonging to the file just left, clears the web view's undo history when a new file is shown, sends `setFiles` while the drawer is open (title "Typewrencher", path "On My iPhone/Typewrencher" or "On My iPad/Typewrencher", as the Files app shows it), refuses a taken name inline and sends the old name back, and refreshes the list when the app returns to the foreground.
+
+Seen in the simulator (files read from the app's container):
+- 2a.1/drawer: a container with `Alpha.txt`, `Bravo.txt` and the app's `untitled.txt` listed all three with times and a "3 files" count, `untitled` marked current.
+- 2a.3, switching: typing " plus typed" in Alpha left "alpha text plus typed" in `Alpha.txt`; switching to Bravo showed "bravo text" with the name "Bravo", and neither file was changed by the switch.
+- 2a.4: pressing `+` created `untitled.txt`; pressing it again without typing did not create another. Switching away from an empty `untitled` deleted it (the drawer then listed "2 files").
+- 2a.5: renaming `untitled` to "X" produced `X.txt` (kept although empty). Renaming it to the taken name "Bravo" changed nothing on disk and the field went back to "X"; two `rename` messages reached the app (the second was refused). **The inline text "A file named Bravo already exists." was not seen**: the screenshot was taken after the keyboard and accessory bar covered the notice line, so only the unchanged files and the restored field are claimed.
+
+**Not run, step 3:** undo after switching (2a.3 needs a shake or a hardware keyboard on a device; the code clears the undo history on every switch); typing during the 0.3 s before a switch (the late-typing path cannot be raced with these tools); a file added or deleted in the Files app showing after the app returns to the foreground (2a.6, device); the iPad.
+
+**Findings (web changes, none made here).**
+1. **The first tap on a drawer row does nothing on iOS; the second tap opens the file.** The page's CSS reveals the trash button and hides the date on `li:hover` (css/styles.css, `.files-list li:hover .file-trash` and `.file-when`). On a touch screen iOS treats the first tap as the "hover" and only the second as the click. Seen in the simulator: the first tap sent no `openFile`; the second did. A fix is `@media (hover: hover)` around those rules, or never revealing content on hover on touch. This will make the drawer feel broken on the iPhone, so it should go in the first web pull request.
+2. The accessibility tree lists a "Move <name> to the Trash" button for every row, including on iOS. The planned web change (no trash button on iOS) covers it.
+
+Not run yet after step 3: export (2a.7) and the alerts check (2a.9); on a device: undo after switching, the Files-app refresh, and the drawer.
 
 **Step 2: autosave (built; simulator, and the force-quit check on the iPhone 14 Pro).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. **Otherwise not run on the iPhone; not run on the iPad.**
 
