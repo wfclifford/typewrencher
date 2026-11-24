@@ -261,6 +261,8 @@ Seen in the simulator (files read from the app's container):
 
 **Owner's results on the iPhone 14 Pro for step 3: "all steps pass as described" (pass).** That covers: opening a file from the drawer (it took two taps, as finding 1 describes, so the two-tap behavior is confirmed on the device), switching between two files, undo after typing and switching (the other file's text did not come back; **2a.3 pass**), and a file added or deleted in the Files app showing in the drawer after returning to the app (**2a.6 pass**). The owner's wording did not itemize each step; recorded as a summary.
 
+**Web follow-ups found in step 3, tracked in pull request #55 (not part of this branch until it merges).** Both were confirmed by the owner on the iPhone 14 Pro after the fixes were bundled into the app: (1) a drawer row now opens on a single tap (the `:hover` styles apply only under `@media (hover: hover)`); (2) switching files quickly no longer magnifies the page (`touch-action: manipulation` on the drawer panel and its list; the zoom was not reproduced in the simulator, only seen and then cleared on the device). Still open for the next web pull request: hide the trash button on iOS (needs a way for the page to know it runs on iOS), Mac-only wording.
+
 Not run yet after step 3: export (2a.7) and the alerts check (2a.9); the iPad.
 
 **Step 2: autosave (built; simulator, and the force-quit check on the iPhone 14 Pro).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. **Otherwise not run on the iPhone; not run on the iPad.**
