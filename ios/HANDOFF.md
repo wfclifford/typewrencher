@@ -225,4 +225,70 @@ Run these checks (simulator where possible; the owner runs the device ones and s
 
 Results to record, each as pass, fail or not run, with the exact error or what was seen, the device and iOS version; the Xcode version; any web change that would be needed, listed but not made.
 
-Results: (empty until run)
+Results: see "2a progress" below (filled in as each step is built).
+
+### 2a progress (branch `ios-phase-2a`, in order)
+
+**Step 1: reopen the last document at launch, or start `untitled.txt` (built; simulator, and the Files-app check on the iPhone 14 Pro).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. Otherwise not run on the iPhone or the iPad.
+
+Built: `DocumentStore.swift` (the app's Documents folder; remembers only the last file's name, because the container path changes between installs; creates `untitled.txt`, `untitled 2.txt`, ...), `TextFile.swift` (UTF-8 read), `EditorSession.swift` (on the bridge's `ready`: reopen the last document or start a new one, then `setDocument`; a second `ready` after a page reload shows the open document again; inline `notify` messages; clears the web view's undo history when a new file is shown). `Info.plist` gains `UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace` so the Documents folder shows in the Files app. All other bridge messages are still stubs.
+
+Seen in the simulator (read from the app's container with `simctl`, and from screenshots):
+- 2a.1: a fresh install's first launch created an empty `untitled.txt` in the app's Documents folder. **Confirmed on the iPhone 14 Pro by the owner: the Files app shows a Typewrencher folder with `untitled.txt` in it (pass).** The owner did not say whether the Name field read "untitled" there; not recorded. Not run on the iPad.
+- A relaunch reused `untitled.txt` (no `untitled 2.txt`).
+- A file containing "Roses are red,\nviolets are blue" was shown after relaunch, with the name "untitled" and 2 lines, 6 words, 9 syllables.
+- 2a.8: a file with invalid UTF-8 bytes was left byte-for-byte unchanged, the app opened a new `untitled N.txt`, and the page showed "Typewrencher couldn't open untitled 3: it is not UTF-8 text." under the counts. (A first version overwrote that reason with a second "couldn't reopen" message; fixed.)
+
+Known, not fixed yet: every launch where the last file cannot be read leaves another empty `untitled N.txt` behind, and an empty untitled file is never cleaned up. That belongs to 2a.4 (decide in Results whether an empty untitled file is removed when left, as on the Mac, or kept).
+
+**Step 3: the files drawer, switching, New and rename (built; simulator, and the checks below on the iPhone 14 Pro).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. **Not run on the iPad.** The bridge now also handles `new`, `files`, `openFile` and `rename`; `open`, `grantFolder`, `trash`, `close` and `export` are still stubs.
+
+Decision (owner, 2026-11-24): an empty `untitled` file that this app created is deleted when the person leaves it (iOS has no Trash for app files; nothing is lost; no other file is ever removed). A renamed file is kept even when empty.
+
+Built: `DocumentStore` lists the `.txt` files (newest first), tracks which untitled files the app created (names only), removes an empty one when left, and cleans names like the Mac. `EditorSession` queues operations one at a time, asks the page for its current text before a switch, saves the file being left, treats typing that arrives late (after the switch, before the page shows the new file) as belonging to the file just left, clears the web view's undo history when a new file is shown, sends `setFiles` while the drawer is open (title "Typewrencher", path "On My iPhone/Typewrencher" or "On My iPad/Typewrencher", as the Files app shows it), refuses a taken name inline and sends the old name back, and refreshes the list when the app returns to the foreground.
+
+Seen in the simulator (files read from the app's container):
+- 2a.1/drawer: a container with `Alpha.txt`, `Bravo.txt` and the app's `untitled.txt` listed all three with times and a "3 files" count, `untitled` marked current.
+- 2a.3, switching: typing " plus typed" in Alpha left "alpha text plus typed" in `Alpha.txt`; switching to Bravo showed "bravo text" with the name "Bravo", and neither file was changed by the switch.
+- 2a.4: pressing `+` created `untitled.txt`; pressing it again without typing did not create another. Switching away from an empty `untitled` deleted it (the drawer then listed "2 files").
+- 2a.5: renaming `untitled` to "X" produced `X.txt` (kept although empty). Renaming it to the taken name "Bravo" changed nothing on disk and the field went back to "X"; two `rename` messages reached the app (the second was refused). **The inline text "A file named Bravo already exists." was not seen**: the screenshot was taken after the keyboard and accessory bar covered the notice line, so only the unchanged files and the restored field are claimed.
+
+**Not run, step 3:** undo after switching (2a.3 needs a shake or a hardware keyboard on a device; the code clears the undo history on every switch); typing during the 0.3 s before a switch (the late-typing path cannot be raced with these tools); a file added or deleted in the Files app showing after the app returns to the foreground (2a.6, device); the iPad.
+
+**Findings (web changes, none made here).**
+1. **The first tap on a drawer row does nothing on iOS; the second tap opens the file.** The page's CSS reveals the trash button and hides the date on `li:hover` (css/styles.css, `.files-list li:hover .file-trash` and `.file-when`). On a touch screen iOS treats the first tap as the "hover" and only the second as the click. Seen in the simulator: the first tap sent no `openFile`; the second did. A fix is `@media (hover: hover)` around those rules, or never revealing content on hover on touch. This will make the drawer feel broken on the iPhone, so it should go in the first web pull request.
+2. The accessibility tree lists a "Move <name> to the Trash" button for every row, including on iOS. The planned web change (no trash button on iOS) covers it.
+
+**Owner's results on the iPhone 14 Pro for step 3: "all steps pass as described" (pass).** That covers: opening a file from the drawer (it took two taps, as finding 1 describes, so the two-tap behavior is confirmed on the device), switching between two files, undo after typing and switching (the other file's text did not come back; **2a.3 pass**), and a file added or deleted in the Files app showing in the drawer after returning to the app (**2a.6 pass**). The owner's wording did not itemize each step; recorded as a summary.
+
+**Web follow-ups found in step 3, tracked in pull request #55 (not part of this branch until it merges).** Both were confirmed by the owner on the iPhone 14 Pro after the fixes were bundled into the app: (1) a drawer row now opens on a single tap (the `:hover` styles apply only under `@media (hover: hover)`); (2) switching files quickly no longer magnifies the page (`touch-action: manipulation` on the drawer panel and its list; the zoom was not reproduced in the simulator, only seen and then cleared on the device). Still open for the next web pull request: hide the trash button on iOS (needs a way for the page to know it runs on iOS), Mac-only wording.
+
+**Step 4: export through the share sheet (built; simulator only).** Xcode 27.2, iPhone 17 and iPad Pro 11-inch (M5) simulators, iOS 27.2, Debug build. **Not run on the iPhone 14 Pro or the iPad Pro 10.5-inch.** `export` is no longer a stub: `EditorSession.export` writes the page's text to a temporary `<name>.txt` and hands it to the system share sheet (`UIActivityViewController`; on an iPad a popover anchored under the Export button). The reply is `ok` after sharing or copying, `declined` if the sheet was closed without choosing (the page then says nothing), or `failed: <reason>`. The temporary file is removed when the sheet finishes. `open`, `grantFolder`, `trash` and `close` are still stubs.
+
+Seen in the simulator:
+- 2a.7, iPhone 17: Export opened the share sheet showing "Alpha, Text Document, 21 bytes" (the size of "alpha text plus typed") with Copy and Save to Files. Closing it by tapping outside replied `declined`, left the button reading "Export" and showed no message. Exporting again and choosing Copy replied `ok` and the button read **Done**. The temporary file was gone after each of those two exports. (A folder left in tmp from my first attempt, 10:19, is from killing the app while the sheet was open; iOS clears tmp.)
+- 2a.7, iPad Pro 11-inch: Export opened a popover anchored under the Export button showing "untitled, Text Document, 19 bytes" (the size of "hello from the iPad"); no crash. Not completed or cancelled there.
+- Not run: "Save to Files" itself; the "failed" reply; sharing an empty document (the page disables Export then); a Mac or iPhone device.
+
+2a.9 (nothing interrupts writing): in everything above, the share sheet was the only thing that appeared on top of the page; no alert, sheet or toast came from the app. Simulator only; the owner should look for any other pop-up on a device.
+
+**Unexplained, to watch for (iPad simulator, once).** In my first iPad-simulator run the Debug trace showed `ready` twice before the first `textChanged`, and of "hello from the iPad" only "e iPad" ended up in the page and the file (a page that loads twice shows the native copy of the text again, which would lose what was typed before the second load). I could not make it happen again: in three further launches there was one `makeUIView` and one `ready`, and typing was saved whole. The first run had no timestamps. The Debug trace now timestamps every line and logs `makeUIView`, so the next occurrence can be explained. Possible causes not ruled out: SwiftUI rebuilding the web view; my simulated taps and typing landing on the wrong element (the loss in that run could also be input that went to the Settings button). If the owner ever sees typed text vanish on the iPad, this is the first thing to look at.
+
+**Owner's results for step 4 on the iPhone 14 Pro and the iPad Pro 10.5-inch: "all tests pass".** The owner was asked to export with Save to Files and open the saved file (text and name right), to close the sheet without choosing (nothing appears), and to repeat on the iPad (popover looks right). The answer did not itemize each one, so it is recorded as the owner's summary. No typed text vanished on the iPad (the unexplained double load above was not seen again).
+
+Not run: the failed-export path; sharing to something other than Files; the Mac app (unaffected).
+
+**Phase 2a status.** Steps 1 to 4 are built and have passed on the iPhone and the iPad. Checks: 2a.1 pass, 2a.2 pass, 2a.3 pass, 2a.4 simulator pass (New, blank page, empty untitled removed), 2a.5 pass (rename, taken name refused; the inline text of the refusal not seen), 2a.6 pass, 2a.7 pass, 2a.8 pass (simulator), 2a.9 pass (simulator, and the owner saw nothing else). Still to do for the whole of phase 1 and 2: the web change to hide the trash button on iOS and fix Mac-only wording; 2b (a chosen folder) and 2c (outside changes, iCloud).
+
+**Step 2: autosave (built; simulator, and the force-quit check on the iPhone 14 Pro).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. **Otherwise not run on the iPhone; not run on the iPad.**
+
+Built: `EditorSession.textChanged` writes the page's text 0.4 s after the page's own 300 ms debounce (`saveNow`, atomic write through `TextFile.write`); `saveBeforeLeaving` (called when the SwiftUI scene phase leaves active) saves what the native side knows, then asks the page for its current text (`TypewrencherHost.getText()`) and saves that, inside a background task. A file moved or deleted outside the app is not recreated; a failed save shows a sticky inline message and keeps the text on the page.
+
+Seen in the simulator (file contents read from the app's container):
+- 2a.2, typing: typing "Roses are red" left exactly that in `untitled.txt` about a second later (the trace shows a `textChanged` message).
+- 2a.2, leaving the foreground: with the save delay stretched to 300 s in a scratch build (not committed; the committed delay is 0.4 s), the file still had the old text before pressing Home and the new text right after, so the save on leaving works. **The app-switcher swipe (a real force-quit) passed on the iPhone 14 Pro, by the owner**: typed a line, swiped the app away within a second, relaunched from the Home Screen, and the line was there and in the file in the Files app. (I could not swipe with the tools available; Home is the same scene-phase change that comes first.) A 30 s delay run was inconclusive (the timer could have fired first) and is not counted.
+- File deleted under the running app, then typing: the file was not recreated, and the page showed "Typewrencher couldn't save untitled: it was moved or deleted outside Typewrencher. Your text is still on the page; Export keeps a copy." The text stayed on the page.
+
+Not run: a failure that is not "deleted" (a full disk, a read-only file); a very large document; the iPad. Switching documents, New, rename, the drawer and export are still to come (steps 3 and 4).
+
+

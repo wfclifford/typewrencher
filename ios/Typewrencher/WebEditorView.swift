@@ -2,12 +2,13 @@ import SwiftUI
 import WebKit
 import os
 
-// Hosts the web view that runs the page, which is the editor. Phase 1: the bridge answers "ready"
-// and stubs every other message; files are not part of this phase. Bridge protocol 1 is unchanged.
+// Hosts the web view that runs the page, which is the editor. The bridge hands "ready" to the EditorSession
+// (show the last document), "textChanged", "new", "files", "openFile", "rename" and "export"; every other message is still a stub (phase 2a). Bridge protocol 1 is unchanged.
 struct WebEditorView: UIViewRepresentable {
     func makeCoordinator() -> Bridge { Bridge() }
 
     func makeUIView(context: Context) -> WKWebView {
+        context.coordinator.trace("makeUIView")
         let config = WKWebViewConfiguration()
         config.setURLSchemeHandler(SiteSchemeHandler(), forURLScheme: SiteSchemeHandler.scheme)
         config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "typewrencher")
@@ -22,6 +23,7 @@ struct WebEditorView: UIViewRepresentable {
         web.isInspectable = true   // Safari > Develop > the device or simulator
         #endif
         web.navigationDelegate = context.coordinator
+        context.coordinator.session.web = web
         web.load(URLRequest(url: SiteSchemeHandler.startURL))
         return web
     }
@@ -48,6 +50,7 @@ struct WebEditorView: UIViewRepresentable {
     // The native end of the bridge (js/host.js). Answers "ready"; every other message is a stub.
     final class Bridge: NSObject, WKScriptMessageHandlerWithReply, WKScriptMessageHandler, WKNavigationDelegate {
         private let log = Logger(subsystem: "Typewrencher", category: "bridge")
+        let session = EditorSession.shared
 
         // Debug builds also append every line to a file in the app's tmp folder, so a simulator run can be
         // read with `simctl get_app_container ... data` without Web Inspector.
@@ -55,7 +58,8 @@ struct WebEditorView: UIViewRepresentable {
             log.info("\(line, privacy: .public)")
             #if DEBUG
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("twdebug.log")
-            let data = Data((line + "\n").utf8)
+            let stamp = ISO8601DateFormatter.string(from: Date(), timeZone: .current, formatOptions: [.withTime, .withFractionalSeconds, .withColonSeparatorInTime])
+            let data = Data((stamp + " " + line + "\n").utf8)
             if let handle = try? FileHandle(forWritingTo: url) { handle.seekToEndOfFile(); handle.write(data); try? handle.close() }
             else { try? data.write(to: url) }
             #endif
@@ -73,11 +77,30 @@ struct WebEditorView: UIViewRepresentable {
             }
             trace("page -> native: \(type)")
             switch type {
+            case "ready":
+                session.pageReady()
+                replyHandler(nil, nil)
+            case "textChanged":
+                if let newText = body["text"] as? String { session.textChanged(newText) }
+                replyHandler(nil, nil)
+            case "new":
+                session.newDocument()
+                replyHandler(nil, nil)
+            case "files":
+                session.filesDrawer(open: body["open"] as? Bool ?? false)
+                replyHandler(nil, nil)
+            case "openFile":
+                if let name = body["name"] as? String { session.openFile(named: name) }
+                replyHandler(nil, nil)
             case "export":
-                // Not stubbed as success: the page would show "Done" for a file that was never written.
-                replyHandler(nil, "not available yet")
+                session.export(filename: body["filename"] as? String ?? "title.txt", data: body["data"] as? String ?? "") { [weak self] error in
+                    self?.trace("export reply: \(error ?? "ok")")
+                    replyHandler(nil, error)
+                }
+            case "rename":
+                session.rename(to: body["name"] as? String ?? "") { error in replyHandler(nil, error) }
             default:
-                replyHandler(nil, nil)   // ready and all other messages
+                replyHandler(nil, nil)   // open, grantFolder, trash, close: still stubs
             }
         }
 
