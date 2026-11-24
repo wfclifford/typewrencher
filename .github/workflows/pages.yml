@@ -39,6 +39,7 @@ jobs:
     permissions:
       pages: write
       id-token: write
+      actions: read # lets the wait step below list this run's artifacts
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -57,5 +58,19 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+      # deploy-pages looks the artifact up through GitHub's API about a second after the upload and sometimes finds
+      # nothing yet ("Found 0 artifact(s)"), even though the upload succeeded. Wait (up to a minute) until it is listed,
+      # then deploy. If it never shows up, carry on: deploy-pages reports the failure as it did before.
+      - name: Wait until the uploaded site is listed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in $(seq 1 12); do
+            count=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" --jq '[.artifacts[] | select(.name == "github-pages")] | length')
+            echo "attempt $attempt: $count github-pages artifact(s) listed"
+            if [ "$count" -ge 1 ]; then exit 0; fi
+            sleep 5
+          done
+          echo "::warning::The uploaded site was not listed after a minute; deploying anyway."
       - id: deployment
         uses: actions/deploy-pages@v4
