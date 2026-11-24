@@ -119,6 +119,7 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
 .files-count { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
 .files-note { margin: 0; padding: 0.85rem; color: var(--muted); font-size: 0.9rem; }
 .files-grant { margin: 0 0.85rem 0.85rem; align-self: flex-start; padding: 0.35rem 0.75rem; }
+.files-choose { margin: 0 0.85rem 0.85rem; align-self: flex-start; padding: 0.35rem 0.75rem; } /* iOS app only: the last thing in the drawer, under the path */
 .files-list { list-style: none; margin: 0; padding: 0.35rem; overflow: auto; flex: 1; min-height: 0; }
 /* Quick taps on neighboring rows read as iOS's double-tap zoom; this turns that gesture off here (pinch zoom still works).
    The list scrolls, so it needs the rule as well as the panel around it. */

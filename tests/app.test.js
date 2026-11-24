@@ -2330,11 +2330,33 @@ test('setFiles trash: false (the iPhone and iPad app) draws no trash buttons; le
   const none = draw({trash: false});
   assert.equal(none.length, 2, 'the rows are still listed');
   for (const li of none) { assert.equal(li.children.length, 1, 'only the file button'); assert.equal(li.children[0].className, 'file'); assert.equal(li.children[0].children.length, 2, 'name and date stay'); }
-  assert.match(read('js/host.js'), /setFiles\(\{ access, folder, path, current, files: \[\{ name, modified \}\], trash \}\)/, 'documented in the host.js header');
+  assert.match(read('js/host.js'), /setFiles\(\{ access, folder, path, current, files: \[\{ name, modified \}\], trash, chooseFolder \}\)/, 'documented in the host.js header');
 });
 test('Files drawer: the date is hidden on hover or focus only for a row that has a trash button', () => {
   const css = read('css/styles.css');
   assert.match(css, /\.files-list li:has\(\.file-trash\):has\(:focus-visible\) \.file-when \{ visibility: hidden; \}/);
   assert.match(css, /\.files-list li:has\(\.file-trash\):hover \.file-when \{ visibility: hidden; \}/);
   assert.doesNotMatch(css, /\.files-list li:hover \.file-when|\.files-list li:has\(:focus-visible\) \.file-when/, 'no unscoped rule that would hide a date with nothing to replace it');
+});
+test('Choose folder button: last thing in the drawer, hidden unless setFiles says chooseFolder: true, posts chooseFolder', () => {
+  const html = read('index.html'), pos = s => html.indexOf(s);
+  assert.ok(pos('id="filesPath"') < pos('id="filesChoose"') && pos('id="filesChoose"') < pos('</aside>'), 'under the path line, inside the drawer');
+  assert.match(html, /<button id="filesChoose" type="button" class="tog files-choose" hidden>Choose folder<\/button>/);
+  const b = bootHost(), n = b.nodes, files = [{name: 'a.txt', modified: 1}];
+  assert.ok(Object.hasOwn(n.filesChoose.attrs, 'hidden') && n.filesChoose.hidden !== false, 'hidden before any list');
+  b.host().setFiles({access: 'granted', folder: 'F', current: 'a.txt', files});
+  assert.equal(n.filesChoose.hidden, true, 'left out: no button (the Mac app and browsers)');
+  b.host().setFiles({access: 'granted', folder: 'F', current: 'a.txt', files, chooseFolder: false});
+  assert.equal(n.filesChoose.hidden, true, 'false: no button');
+  b.host().setFiles({access: 'granted', folder: 'F', current: 'a.txt', files, chooseFolder: true});
+  assert.equal(n.filesChoose.hidden, false, 'true: the button shows');
+  n.filesChoose.click();
+  assert.equal(JSON.stringify(b.messages.filter(m => m.type === 'chooseFolder')), '[{"type":"chooseFolder"}]', 'one message, nothing else attached');
+  b.host().setFiles({access: 'granted', folder: 'F', current: 'a.txt', files});
+  assert.equal(n.filesChoose.hidden, true, 'the next list without the flag hides it again');
+  assert.match(read('js/host.js'), /\{ type: 'chooseFolder' \}/, 'documented in the host.js header');
+});
+test('Choose folder button: a browser has no host, no drawer, and the button never shows', () => {
+  const b = boot(), n = b.nodes;
+  assert.ok(Object.hasOwn(n.filesChoose.attrs, 'hidden') && n.filesChoose.hidden !== false); assert.ok(Object.hasOwn(n.filesPanel.attrs, 'hidden') && n.filesPanel.hidden !== false);
 });
