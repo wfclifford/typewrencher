@@ -2262,3 +2262,11 @@ test('Mac app: the Name field selects a default untitled name when it gets focus
   n.fname.emit('mousedown'); n.fname.emit('mouseup', {preventDefault() { prevented++; }}); assert.equal(prevented, 1, 'a click on a real name places the caret as usual');
   const w = boot(), r = w.nodes; let ws = 0; r.fname.select = () => { ws++; }; r.fname.value = 'untitled'; r.fname.emit('focus'); assert.equal(ws, 0, 'browsers keep the placeholder and never select');
 });
+test('Name field on phones: own full-width row under 480px, 16px on touch screens so iOS does not zoom, desktop layout untouched', () => {
+  const css = read('css/styles.css');
+  assert.match(css, /@media \(max-width: 479px\) \{\s*header \{ flex-wrap: wrap; \}\s*\.actions, \.savebox \{ display: contents; \}\s*#save \{ order: 8; margin-left: auto; \}\s*\.more \{ order: 9; \}\s*\.fname \{ order: 20; flex: 1 1 100%; \}\s*\}/);
+  assert.match(css, /@media \(pointer: coarse\) \{ #fname \{ font-size: 1rem; \} \}/, 'at least 16px');
+  assert.doesNotMatch(css, /@media \(max-width: (4[89]\d|[5-9]\d\d)px\)[^{]*\{\s*header \{ flex-wrap: wrap/, 'the narrow-header rules stop below 480px');
+  const html = read('index.html'); // the order the page relies on: Name stays inside .savebox, before Export
+  assert.ok(html.indexOf('id="fname"') < html.indexOf('id="save"') && html.indexOf('class="savebox"') < html.indexOf('id="fname"'));
+});

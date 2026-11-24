@@ -148,3 +148,15 @@ Status: fix built and checked in the simulator, and confirmed by the owner on th
 **Checked in the simulator (iPhone 17, iOS 27.2, portrait).** With the keyboard open the header sits below the status bar, in the same place as without the keyboard, and tapping the files drawer button opened the drawer. The owner also confirmed on the iPhone 14 Pro (portrait): the rhyme panel sits above the keyboard with nothing cut off, a long pasted document keeps the caret line visible and the header in place, and Settings opens and closes with the keyboard open. Not run: landscape and the iPad (the iPad did not show the problem before).
 
 **Decision for the owner: where the rule should live.** The same rule in `css/styles.css` would fix it at the source, but it is a site release, it changes the layout in browsers and installed web apps that I have not tested (in Safari the inset is 0 with the keyboard open, so it should be a no-op there, but that is unverified), and it needs the stamp, tests and a release. Left as a native rule for now. Not changed here: the system's form-accessory bar (up, down and check buttons) above the keyboard still takes about 50 pt; hiding it is possible natively and was not tried.
+
+## Follow-up: Name field on phones
+
+Status: built, tests pass, checked in the iPhone 17 simulator only. **Not run on the iPhone 14 Pro**, the iPad, or in a desktop or Mac window.
+
+**Cause.** Two things. The header left the Name field about 32 pt of a 402 pt screen. And its font was 0.9rem (about 14.4 px): iOS zooms into any field under 16 px when it gets focus, which is the "screen zooms in" the owner saw (in the simulator it also showed as the page shifted left and the editor behind the keyboard).
+
+**Change (web, a site release).** `css/styles.css`: under 480 px the filename gets its own full-width row under the buttons (option 1 of the mockups the owner approved; header order and every button unchanged); on touch screens (`pointer: coarse`) `#fname` is 16 px. The Mac app's window is never narrower than 480 pt, so its header is unchanged. One test added; stamp, `--check` and `node tests/app.test.js` (242 pass) run.
+
+**Seen in the simulator (iPhone 17, iOS 27.2).** Row 1: files, Open, +, Export, Settings. Row 2: "Name" and a field about 370 pt wide. Tapping the field opened the keyboard with no zoom, no sideways shift, and the editor and footer in place.
+
+**Not run, and a known risk.** Narrower than 402 pt, for example Slide Over at about 320 CSS px: row 1 needs about 291 pt of the 288 available, so Settings (and the field row below it) will probably wrap onto another row. That is no longer an overlap, but it is untested and unsightly. Also not run: the iPad, landscape, a desktop browser at 480 to 600 px, and the Mac app.
