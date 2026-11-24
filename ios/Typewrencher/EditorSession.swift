@@ -253,6 +253,48 @@ final class EditorSession {
         }
     }
 
+    // MARK: Export
+
+    // The page's Export button (bridge message "export"): a copy of the text as a .txt file, handed to the system share
+    // sheet, which is the one exit from the writing surface the project accepts (iOS has no other way to save a copy
+    // somewhere the person chooses). The reply is nil once the copy was shared or saved, "declined" if the sheet was
+    // closed without choosing anything (the page then says nothing), or a short reason if the file could not be made.
+    func export(filename: String, data: String, reply: @escaping (String?) -> Void) {
+        let name = (filename as NSString).lastPathComponent
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let file = folder.appendingPathComponent(name.isEmpty ? "title.txt" : name)
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try Data(data.utf8).write(to: file, options: .atomic)
+        } catch {
+            return reply("failed: \(Self.reason(error))")
+        }
+        guard let top = Self.topViewController() else {
+            try? FileManager.default.removeItem(at: folder)
+            return reply("failed: nothing to show the share sheet on")
+        }
+        let sheet = UIActivityViewController(activityItems: [file], applicationActivities: nil)
+        sheet.completionWithItemsHandler = { _, completed, _, error in
+            try? FileManager.default.removeItem(at: folder)
+            if let error { reply("failed: \(Self.reason(error))") } else { reply(completed ? nil : "declined") }
+        }
+        // On an iPad the sheet is a popover; anchor it near the top, where the Export button is.
+        if let popover = sheet.popoverPresentationController, let view = top.view {
+            popover.sourceView = view
+            popover.sourceRect = CGRect(x: view.bounds.maxX - 120, y: view.safeAreaInsets.top + 40, width: 1, height: 1)
+            popover.permittedArrowDirections = .up
+        }
+        top.present(sheet, animated: true)
+    }
+
+    private static func topViewController() -> UIViewController? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene = scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+        var top = scene?.keyWindow?.rootViewController
+        while let presented = top?.presentedViewController { top = presented }
+        return top
+    }
+
     // MARK: The files drawer
 
     // The page's drawer opened or closed (bridge message "files"): while it is open, send the list.

@@ -263,7 +263,18 @@ Seen in the simulator (files read from the app's container):
 
 **Web follow-ups found in step 3, tracked in pull request #55 (not part of this branch until it merges).** Both were confirmed by the owner on the iPhone 14 Pro after the fixes were bundled into the app: (1) a drawer row now opens on a single tap (the `:hover` styles apply only under `@media (hover: hover)`); (2) switching files quickly no longer magnifies the page (`touch-action: manipulation` on the drawer panel and its list; the zoom was not reproduced in the simulator, only seen and then cleared on the device). Still open for the next web pull request: hide the trash button on iOS (needs a way for the page to know it runs on iOS), Mac-only wording.
 
-Not run yet after step 3: export (2a.7) and the alerts check (2a.9); the iPad.
+**Step 4: export through the share sheet (built; simulator only).** Xcode 27.2, iPhone 17 and iPad Pro 11-inch (M5) simulators, iOS 27.2, Debug build. **Not run on the iPhone 14 Pro or the iPad Pro 10.5-inch.** `export` is no longer a stub: `EditorSession.export` writes the page's text to a temporary `<name>.txt` and hands it to the system share sheet (`UIActivityViewController`; on an iPad a popover anchored under the Export button). The reply is `ok` after sharing or copying, `declined` if the sheet was closed without choosing (the page then says nothing), or `failed: <reason>`. The temporary file is removed when the sheet finishes. `open`, `grantFolder`, `trash` and `close` are still stubs.
+
+Seen in the simulator:
+- 2a.7, iPhone 17: Export opened the share sheet showing "Alpha, Text Document, 21 bytes" (the size of "alpha text plus typed") with Copy and Save to Files. Closing it by tapping outside replied `declined`, left the button reading "Export" and showed no message. Exporting again and choosing Copy replied `ok` and the button read **Done**. The temporary file was gone after each of those two exports. (A folder left in tmp from my first attempt, 10:19, is from killing the app while the sheet was open; iOS clears tmp.)
+- 2a.7, iPad Pro 11-inch: Export opened a popover anchored under the Export button showing "untitled, Text Document, 19 bytes" (the size of "hello from the iPad"); no crash. Not completed or cancelled there.
+- Not run: "Save to Files" itself; the "failed" reply; sharing an empty document (the page disables Export then); a Mac or iPhone device.
+
+2a.9 (nothing interrupts writing): in everything above, the share sheet was the only thing that appeared on top of the page; no alert, sheet or toast came from the app. Simulator only; the owner should look for any other pop-up on a device.
+
+**Unexplained, to watch for (iPad simulator, once).** In my first iPad-simulator run the Debug trace showed `ready` twice before the first `textChanged`, and of "hello from the iPad" only "e iPad" ended up in the page and the file (a page that loads twice shows the native copy of the text again, which would lose what was typed before the second load). I could not make it happen again: in three further launches there was one `makeUIView` and one `ready`, and typing was saved whole. The first run had no timestamps. The Debug trace now timestamps every line and logs `makeUIView`, so the next occurrence can be explained. Possible causes not ruled out: SwiftUI rebuilding the web view; my simulated taps and typing landing on the wrong element (the loss in that run could also be input that went to the Settings button). If the owner ever sees typed text vanish on the iPad, this is the first thing to look at.
+
+Not run yet after step 4: everything on a device for steps 4 and the iPad; Save to Files; the failed-export path.
 
 **Step 2: autosave (built; simulator, and the force-quit check on the iPhone 14 Pro).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. **Otherwise not run on the iPhone; not run on the iPad.**
 
