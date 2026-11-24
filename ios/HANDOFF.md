@@ -101,6 +101,12 @@ Widths are my readings of three screenshots the owner supplied (screenshot pixel
 - **1.7 undo (owner): pass for typing and a paste.** Undo took them back in order. Switching documents is stubbed (the + button does nothing), so that part is **not run**.
 - **1.4 safe areas (owner): pass.** iPhone 14 Pro portrait and landscape (both directions), around the Dynamic Island, rounded corners and home indicator, and the iPad Pro 10.5-inch. This replaces my simulator-only "partial pass" in the table above.
 - **1.12 rhyme mark (owner): pass.** Reported as passing for every tone in system light and dark, on the iPhone 14 Pro (the step was given for it). The owner did not list the tones one by one, and did not say whether the iPad was also checked.
+- **1.13 drawer on a phone (owner, iPhone 14 Pro; two screenshots I read): partial.**
+  - Pass: the drawer opens and floats over the left of the text (it covers part of the text; the text does not reflow).
+  - No trash buttons appear. The drawer is empty because the stub sends no files, so this says nothing about what the page will do once files are listed (see finding 2).
+  - Not reported: whether closing the drawer returns the caret to the text. Not run.
+  - With the keyboard open, the header, including the files drawer button, has scrolled out of view (screenshot), and the owner has to close the keyboard to reach it. The system's form-accessory bar (up, down and check buttons) shows above the keyboard and takes space; whether it can be hidden natively, or whether this layout is the page's intent, was not tried.
+- **1.9 phone layout (owner, iPhone 14 Pro, the only iPhone the owner has): the name field is too small, nothing else is wrong.** The other header buttons and the drawer fit. The owner proposes moving the Open and + buttons into the files drawer to make room for the name field. That is a web change and was not made; it would also change the header order the Mac app and `mac/HANDOFF.md` rely on, so it would need to be iOS-only or decided for all platforms.
 - **Not run on the iPad:** 1.13 and the Slide Over Page width control; anything not listed above.
 
 **Decision for the owner:** locking the iPhone to portrait is one line in the build settings (`INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone`). "Landscape only with an external keyboard" cannot be set in the plist; it would need code that watches for a keyboard and restricts orientation, which is more than this phase and is not built.
