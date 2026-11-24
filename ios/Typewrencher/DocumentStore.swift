@@ -117,6 +117,20 @@ struct DocumentStore {
         if (try? FileManager.default.removeItem(at: url)) != nil { setUntitled(url, false) }
     }
 
+    // A file with this text under a free name in the folder (name.txt, name 2.txt, ...): used to keep text that could not be
+    // saved where it belongs. It is an ordinary file, never one of the untitled files the app may delete.
+    func createFile(named base: String, text: String) throws -> URL {
+        let fm = FileManager.default
+        var url = folder.appendingPathComponent(base + ".txt")
+        var number = 2
+        while fm.fileExists(atPath: url.path) {
+            url = folder.appendingPathComponent("\(base) \(number).txt")
+            number += 1
+        }
+        try Data(text.utf8).write(to: url, options: .atomic)
+        return url
+    }
+
     // untitled.txt, untitled 2.txt, ... the first name that is free.
     func createUntitled() throws -> URL {
         let fm = FileManager.default

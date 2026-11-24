@@ -37,8 +37,7 @@ final class EditorSession {
             if ChosenFolder.isRemembered {
                 // The bookmark is kept: an unavailable drive or a folder that is back later works again. Until then the
                 // app's own folder is used, and the person is told.
-                let name = ChosenFolder.rememberedName.map { "\u{201c}\($0)\u{201d}" } ?? "the folder you chose"
-                launchNotice = "Typewrencher couldn\u{2019}t reach \(name), so it is using its own folder. Choose the folder again to go back."
+                launchNotice = Self.lostNotice(ChosenFolder.rememberedName)
             }
         }
     }
@@ -420,7 +419,46 @@ final class EditorSession {
     }
 
     // The app came back to the foreground: files may have been added, moved or deleted in the Files app.
-    func refreshFiles() { sendFiles() }
+    // If the documents folder is gone (deleted, in Recently Deleted, an unplugged drive) the app moves to its own folder.
+    func refreshFiles() {
+        if !leaveFolderIfLost() { sendFiles() }
+    }
+
+    private static func lostNotice(_ name: String?) -> String {
+        let folder = name.map { "\u{201c}\($0)\u{201d}" } ?? "The folder you chose"
+        return "\(folder) was deleted or can\u{2019}t be reached, so Typewrencher is using its own folder. Choose a folder again to go back."
+    }
+
+    // True if the documents folder was lost and the app is moving to its own folder. The open document's text is never
+    // dropped: if it could not be saved (its file went with the folder), it is first kept as a file in the app's folder.
+    private func leaveFolderIfLost() -> Bool {
+        guard launched, !store.isAppFolder, !ChosenFolder.isReachable(store.folder) else { return false }
+        let lostName = store.folderLabel
+        perform { finished in
+            self.currentText { _ in
+                var kept: String?
+                if let url = self.fileURL, self.text != self.savedText {
+                    do {
+                        let copy = try DocumentStore().createFile(named: DocumentStore.displayName(url), text: self.text)
+                        self.savedText = self.text   // it is saved, in the new place
+                        kept = copy.deletingPathExtension().lastPathComponent
+                    } catch {
+                        // Not even that worked: stay where we are, the text is still on the page, and say so.
+                        self.notify("Typewrencher couldn\u{2019}t reach \u{201c}\(lostName)\u{201d}, and couldn\u{2019}t keep your text elsewhere: \(Self.reason(error)). Your text is still on the page; Export keeps a copy.", sticky: true)
+                        return finished()
+                    }
+                }
+                self.store = DocumentStore()   // the bookmark stays: a folder that comes back works again at the next launch
+                self.openFirstDocument()
+                self.releaseUnusedFolders()
+                self.sendFiles()
+                let note = Self.lostNotice(lostName)
+                self.notify(kept.map { note + " A copy of your latest text is in the Typewrencher folder as \u{201c}\($0)\u{201d}." } ?? note)
+                finished()
+            }
+        }
+        return true
+    }
 
     // Sends the page the .txt files in the Documents folder (TypewrencherHost.setFiles).
     private func sendFiles() {

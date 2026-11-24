@@ -22,6 +22,17 @@ enum ChosenFolder {
     static var isRemembered: Bool { UserDefaults.standard.data(forKey: key) != nil }
     static var rememberedName: String? { UserDefaults.standard.string(forKey: nameKey) }
 
+    // The folder is there, can be listed, and has not been deleted. Deleting a folder in the Files app moves it to Recently
+    // Deleted, where a bookmark still finds it and the app could keep saving into it until iOS empties it (about 30 days
+    // later); that counts as gone. The ".Trash" and "Recently Deleted" names are what the simulator and iOS use as far as
+    // is known; a device that names it differently would keep working in the deleted folder, as it did before.
+    static func isReachable(_ folder: URL) -> Bool {
+        var isFolder: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isFolder), isFolder.boolValue,
+              (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) != nil else { return false }
+        return !folder.standardizedFileURL.pathComponents.contains { $0 == ".Trash" || $0 == "Recently Deleted" }
+    }
+
     // The remembered folder with access started (the caller stops it when the folder is no longer used), or nil when none
     // is remembered or it can no longer be reached: deleted, moved, an unavailable drive, a bookmark iOS no longer honors.
     static func resolve() -> URL? {
@@ -29,8 +40,7 @@ enum ChosenFolder {
         var stale = false
         guard let folder = try? URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale),
               folder.startAccessingSecurityScopedResource() else { return nil }
-        var isFolder: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isFolder), isFolder.boolValue else {
+        guard isReachable(folder) else {
             folder.stopAccessingSecurityScopedResource()
             return nil
         }
