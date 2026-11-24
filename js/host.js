@@ -18,6 +18,8 @@
 //     { type: 'close' }                            close the window; no longer sent by the page, still handled
 //     { type: 'files', open }                      the files drawer opened or closed; while open, send setFiles
 //     { type: 'grantFolder' }                      ask the person for access to the document's folder
+//     { type: 'chooseFolder' }                     the drawer's "Choose folder" button (iPhone and iPad app only): show the
+//                                                  native folder picker; the folder chosen becomes where documents live
 //     { type: 'openFile', name }                   switch this window to that file in the folder (saving this one)
 //     { type: 'trash', name }                      move that file (a name from setFiles, with .txt) in the document's
 //                                                  folder to the Trash. Reply { ok: true }, or an error string
@@ -25,10 +27,12 @@
 //                                                  Trashing the open document switches to a new empty one first.
 //   native -> page, by calling window.TypewrencherHost (defined in js/app.js)
 //     setDocument({ text, name })                  show this text and name; sends neither textChanged nor rename back
-//     setFiles({ access, folder, path, current, files: [{ name, modified }], trash })
+//     setFiles({ access, folder, path, current, files: [{ name, modified }], trash, chooseFolder })
 //                                                  the drawer's list; access is 'granted', 'needed' or 'none' (untitled);
 //                                                  trash is optional: false hides the rows' trash buttons (the iPhone and
 //                                                  iPad app, which has none); left out or true, the buttons show (the Mac app)
+//                                                  chooseFolder is optional: true shows a "Choose folder" button at the bottom of
+//                                                  the drawer (the iPhone and iPad app); left out or false, no button (Mac, browsers)
 //     notify(message, { sticky })                  show a short message on the notice line (no alerts in the app);
 //                                                  it clears after 12 s, or stays if sticky until replaced;
 //                                                  notify('') clears it. The second argument is optional.

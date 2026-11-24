@@ -527,7 +527,7 @@
   // reads the folder (after asking the person for access, the first time) and sends the list with setFiles.
   var filesBtn = document.getElementById("filesBtn"), filesPanel = document.getElementById("filesPanel");
   var filesFolder = document.getElementById("filesFolder"), filesCount = document.getElementById("filesCount");
-  var filesNote = document.getElementById("filesNote"), filesGrant = document.getElementById("filesGrant");
+  var filesNote = document.getElementById("filesNote"), filesGrant = document.getElementById("filesGrant"), filesChoose = document.getElementById("filesChoose");
   var filesList = document.getElementById("filesList"), filesPath = document.getElementById("filesPath");
   var filesOpen = false;
   function setFilesOpen(open, persist) {
@@ -615,6 +615,7 @@
       : state.access === "granted" ? "" : "Save this document to see the other files in its folder.";
     filesNote.hidden = state.access === "granted";
     filesGrant.hidden = state.access !== "needed";
+    filesChoose.hidden = state.chooseFolder !== true; // only a host that can show a folder picker (the iPhone and iPad app) asks for the button
     filesList.textContent = "";
     armedKept = false;
     var now = new Date();
@@ -650,6 +651,7 @@
       if (!open && e && e.detail > 0) ed.focus();
     });
     filesGrant.addEventListener("click", function () { host.post({ type: "grantFolder" }); });
+    filesChoose.addEventListener("click", function () { host.post({ type: "chooseFolder" }); });
   }
 
   // Mac app only: the native side's messages (a failed save, a refused rename, ...) show on the notice
