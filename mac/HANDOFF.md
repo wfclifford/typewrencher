@@ -4,6 +4,20 @@ This file is how the planning chat and the coding session pass work to each othe
 
 How to use it: pull `main`, read the task below, do it on a branch, then fill in Results in the same branch and open a pull request. Do not merge it.
 
+## Recheck: files drawer touch fixes (#55) in the Mac app
+
+Checked by the owner on the Mac (Debug build run from Xcode, site copy for the `drawer-touch-hover` branch built with `node tools/build-site.js mac/Typewrencher/site`, Clean Build Folder first). I did not run the Mac app for this one; this is the owner's report, recorded as given: items 2 to 6 of the list below all pass.
+
+Changes under check (CSS only; no native Mac code changed): the drawer row, date and trash hover styles now apply only under `@media (hover: hover)`, and `touch-action: manipulation` is set on the drawer panel and its list.
+
+- Hover over a file row: the row gets the light tint, the date is replaced by the trash icon, and the icon gets a border on hover. **Pass.**
+- Hover over the current (highlighted) row: it keeps its solid highlight. **Pass.**
+- Click a row to open it, and click quickly between two or three rows: files open as before, nothing misbehaves. **Pass.**
+- Keyboard: Tab into the drawer; a focused row shows the trash icon in place of the date. **Pass.**
+- Trash: one click on a row's trash icon arms it ("Delete?"); not confirmed on a file. **Pass.**
+
+Not run: a second Mac window size (the Mac window is a single window), other themes, VoiceOver.
+
 ## Recheck: web changes #43, #47, #48, #49 in the Mac app
 
 Checked on the Mac (macOS 27.2) in a Debug build run from Xcode, `main` at 588628b, site copy rebuilt with `node tools/build-site.js mac/Typewrencher/site`. `node tools/stamp.js --check` is current and `node tests/app.test.js` passes (245). No code was changed: no check failed. I drove the real window with CGEvent clicks and screenshots, in a scratch folder `~/Developer/tw-check`. Window 1512×949 pt, then 480×700 and 1400×860 pt. The first launch showed a macOS "differs from previously opened versions" prompt; the owner chose Open Anyway.
