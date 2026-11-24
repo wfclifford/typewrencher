@@ -437,6 +437,16 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
   .more { order: 9; }
   .fname { order: 20; flex: 1 1 100%; }
 }
+/* Very narrow (Slide Over, about 320px): the idle Export label is hidden so the five buttons fit on one row. The button
+   keeps its accessible name and is still 44px wide; "Done" brings the label back while it flashes, and a failure shows in the Name row. */
+.fname-note { display: none; }
+@media (max-width: 359px) {
+  #save:not(.flashing) #saveLabel { display: none; }
+  #save:not(.flashing) { min-width: var(--hit); justify-content: center; }
+  /* A failed save shows beside the field, in place of "Name", so the buttons row stays on one line. */
+  .savebox.flash-error .fname-text { display: none; }
+  .savebox.flash-error .fname-note { display: inline; flex: none; white-space: nowrap; color: var(--ink); font-weight: 600; }
+}
 /* Touch screens: 16px, because iOS zooms into any field smaller than that when it gets focus. */
 @media (pointer: coarse) { #fname { font-size: 1rem; } }
 

@@ -151,7 +151,7 @@ Status: fix built and checked in the simulator, and confirmed by the owner on th
 
 ## Follow-up: Name field on phones
 
-Status: built, tests pass, checked in the iPhone 17 simulator only. **Not run on the iPhone 14 Pro**, the iPad, or in a desktop or Mac window.
+Status: merged (#47). Built, tests pass, checked in the iPhone 17 simulator, and verified on an iPhone by the owner. Not run: the iPad, or in a desktop or Mac window.
 
 **Cause.** Two things. The header left the Name field about 32 pt of a 402 pt screen. And its font was 0.9rem (about 14.4 px): iOS zooms into any field under 16 px when it gets focus, which is the "screen zooms in" the owner saw (in the simulator it also showed as the page shifted left and the editor behind the keyboard).
 
@@ -160,3 +160,23 @@ Status: built, tests pass, checked in the iPhone 17 simulator only. **Not run on
 **Seen in the simulator (iPhone 17, iOS 27.2).** Row 1: files, Open, +, Export, Settings. Row 2: "Name" and a field about 370 pt wide. Tapping the field opened the keyboard with no zoom, no sideways shift, and the editor and footer in place.
 
 **Not run, and a known risk.** Narrower than 402 pt, for example Slide Over at about 320 CSS px: row 1 needs about 291 pt of the 288 available, so Settings (and the field row below it) will probably wrap onto another row. That is no longer an overlap, but it is untested and unsightly. Also not run: the iPad, landscape, a desktop browser at 480 to 600 px, and the Mac app.
+
+## Follow-up: Slide Over header (very narrow windows)
+
+Status: built, tests pass (243). Rendered at 320 and 402 CSS px in desktop Chrome through an iframe, with a stand-in for the app bridge. **Not run in iPad Slide Over itself, on the iPad, the iPhone, or the Mac app.**
+
+**Problem.** At about 320 px the buttons row needed about 291 pt of 288 available, so Settings wrapped to another row.
+
+**Change (web, a site release).** Under 360 px the idle Export label is hidden (`#save:not(.flashing) #saveLabel { display: none; }`) and the button keeps a 44 px minimum width and its accessible name ("Export a copy as .txt", or "Save as .txt" in a browser). `js/app.js`: `flash()` adds a `flashing` class to the button while "Done" or "Couldn't save" shows and removes it after 2.5 s, so the feedback stays visible. In a browser the idle ".txt" label is hidden the same way under 360 px, so a very narrow browser window is affected too.
+
+**Seen at 320 px (desktop Chrome, not an iPad).** Files, Open, + on the left, an icon-only Export and Settings on the right, all on one row; the Name row sits below. At 402 px the row is unchanged: "Export" is shown. The dictionary dialog covered the Name row in the capture (the scratch page has no dictionary files).
+
+**Not run, known risk.** "Couldn't save" is longer than "Export", so for 2.5 s at 320 px the label could push Settings to a second row. Not tried. The "Done" label should fit (it is shorter than "Export"); not tried either.
+
+**Owner's first iPad result (Slide Over): not a test of this change.** The owner saw Settings on a second row. The site copy the app bundles (`ios/Typewrencher/site`, not tracked by git) had been built before this change and had neither the new CSS rule nor the `flashing` class, so the iPad ran the old header. It was rebuilt afterwards. "Done" never shows in the iOS app yet because the bridge replies "not available yet" to every export until the files phase wires it up (not run, not failed). **Still to do: run the rebuilt app in Slide Over and check that all five buttons are on one row.** Lesson for next time: run `node tools/build-site.js ios/Typewrencher/site` whenever the branch changes.
+
+**Owner's second iPad result (Slide Over), after rebuilding the site copy.** The idle row passes: all five buttons are on one row. "Couldn't save" then pushed Settings onto its own row above the Name row, and the owner asked for the message to appear in the Name row instead.
+
+**Change (web).** Under 360 px a failed save shows in the Name row, in place of the word "Name" (a decorative `#fnameNote` span; the status line and the button's accessible name still carry the message), and the Export button stays icon-only. "Done" stays on the button. `flash()` takes a third argument (`failed`), sets `flashing` on the button for "Done" only and `flash-error` on `.savebox` for a failure, and clears both after 2.5 s. At 360 px and wider nothing changes: the failure shows on the button as before. Tests: 244 pass; stamp `--check` current.
+
+**Seen in desktop Chrome through a 320 px and a 402 px iframe, with a bridge that rejects exports.** At 320 px: "Couldn't save" in the Name row, buttons row on one line with an icon-only Export. At 402 px: "Couldn't save" on the button, Name row unchanged. **Owner confirmed on the iPad in Slide Over: pass** ("Couldn't save" in the Name row, Settings stays on the top row). In the iOS app every export fails until the files phase, so the failure message is what Slide Over will show.
