@@ -241,5 +241,17 @@ Seen in the simulator (read from the app's container with `simctl`, and from scr
 
 Known, not fixed yet: every launch where the last file cannot be read leaves another empty `untitled N.txt` behind, and an empty untitled file is never cleaned up. That belongs to 2a.4 (decide in Results whether an empty untitled file is removed when left, as on the Mac, or kept).
 
-Not run yet: autosave (2a.2), switching and undo (2a.3), New (2a.4), rename (2a.5), the Files-app refresh (2a.6), export (2a.7), the alerts check (2a.9).
+Not run yet after step 2: switching and undo (2a.3), New (2a.4), rename (2a.5), the Files-app refresh (2a.6), export (2a.7), the alerts check (2a.9).
+
+**Step 2: autosave (built; simulator only).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. **Not run on the iPhone 14 Pro or the iPad.**
+
+Built: `EditorSession.textChanged` writes the page's text 0.4 s after the page's own 300 ms debounce (`saveNow`, atomic write through `TextFile.write`); `saveBeforeLeaving` (called when the SwiftUI scene phase leaves active) saves what the native side knows, then asks the page for its current text (`TypewrencherHost.getText()`) and saves that, inside a background task. A file moved or deleted outside the app is not recreated; a failed save shows a sticky inline message and keeps the text on the page.
+
+Seen in the simulator (file contents read from the app's container):
+- 2a.2, typing: typing "Roses are red" left exactly that in `untitled.txt` about a second later (the trace shows a `textChanged` message).
+- 2a.2, leaving the foreground: with the save delay stretched to 300 s in a scratch build (not committed; the committed delay is 0.4 s), the file still had the old text before pressing Home and the new text right after, so the save on leaving works. **The app-switcher swipe (a real force-quit) was not run**: I could not swipe with the tools available, and Home is the same scene-phase change that comes first. A 30 s delay run was inconclusive (the timer could have fired first) and is not counted.
+- File deleted under the running app, then typing: the file was not recreated, and the page showed "Typewrencher couldn't save untitled: it was moved or deleted outside Typewrencher. Your text is still on the page; Export keeps a copy." The text stayed on the page.
+
+Not run: a failure that is not "deleted" (a full disk, a read-only file); a very large document; the iPad. Switching documents, New, rename, the drawer and export are still to come (steps 3 and 4).
+
 

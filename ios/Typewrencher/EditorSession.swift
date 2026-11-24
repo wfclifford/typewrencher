@@ -1,14 +1,23 @@
+import UIKit
 import WebKit
 
-// The one open document and the page that edits it. Phase 2a, step 1: when the page is ready, reopen the last
-// document (or start untitled.txt) and show it. Saving, the files drawer, rename and export come in later steps.
-// Behavior follows mac/Typewrencher/EditorSession.swift, without the AppKit parts.
+// The one open document and the page that edits it. Phase 2a: when the page is ready, reopen the last document
+// (or start untitled.txt) and show it (step 1); save what is typed (step 2). The files drawer, rename and export
+// come in later steps. Behavior follows mac/Typewrencher/EditorSession.swift, without the AppKit parts.
 final class EditorSession {
+    static let shared = EditorSession()
+
     weak var web: WKWebView?
     private let store = DocumentStore()
     private var launched = false
     private(set) var fileURL: URL?
     private(set) var text = ""
+    private var savedText = ""          // what is in the file now
+    private var saveWork: DispatchWorkItem?
+    private var saveFailure: String?    // why the last save failed, until a save of this file works
+    private static let saveDelay = 0.4  // seconds after the page's (already debounced) textChanged
+
+    private var name: String { fileURL.map { DocumentStore.displayName($0) } ?? "" }
 
     // The page has started (bridge message "ready"). The first time, show the last document or a new one; if the
     // page reloads and says ready again, show the document that is already open.
@@ -47,9 +56,66 @@ final class EditorSession {
         }
         fileURL = url
         text = newText
+        savedText = newText
         store.remember(url)
         push(newText: true)
         return true
+    }
+
+    // MARK: Saving
+
+    // The page sent new text (bridge message "textChanged", about 300 ms after typing stops): write it a moment later.
+    func textChanged(_ newText: String) {
+        text = newText
+        saveWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.saveNow() }
+        saveWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.saveDelay, execute: work)
+    }
+
+    struct MovedOrDeleted: LocalizedError {
+        var errorDescription: String? { "it was moved or deleted outside Typewrencher" }
+    }
+
+    // Writes the newest text if it differs from the file. When writing fails the reason stays on the notice line
+    // (sticky) until a save of this file works, and the text stays in the page. A file moved or deleted outside
+    // the app (in the Files app, say) is not recreated, so a file the person removed does not come back on its own.
+    @discardableResult
+    func saveNow() -> Bool {
+        saveWork?.cancel(); saveWork = nil
+        guard let url = fileURL, text != savedText else { return true }
+        do {
+            guard FileManager.default.fileExists(atPath: url.path) else { throw MovedOrDeleted() }
+            try TextFile.write(text, to: url)
+            savedText = text
+            if saveFailure != nil {
+                saveFailure = nil
+                notify("")
+            }
+            return true
+        } catch {
+            let reason = Self.reason(error)
+            saveFailure = reason
+            notify("Typewrencher couldn\u{2019}t save \(name): \(reason). Your text is still on the page; Export keeps a copy.", sticky: true)
+            return false
+        }
+    }
+
+    // The app is leaving the foreground (locked, switched away, closed): save what is on the page right now, even
+    // text typed in the last 300 ms that the page has not sent yet. Saves what is already known first, then asks
+    // the page, inside a background task so iOS does not suspend the app halfway.
+    func saveBeforeLeaving() {
+        guard fileURL != nil else { return }
+        saveNow()
+        guard let web else { return }
+        var task = UIBackgroundTaskIdentifier.invalid
+        task = UIApplication.shared.beginBackgroundTask { UIApplication.shared.endBackgroundTask(task) }
+        let file = fileURL
+        web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.getText()") { result, _ in
+            if let newText = result as? String, self.fileURL == file { self.text = newText }
+            self.saveNow()
+            UIApplication.shared.endBackgroundTask(task)
+        }
     }
 
     // Shows the open document in the page (TypewrencherHost.setDocument sends nothing back).

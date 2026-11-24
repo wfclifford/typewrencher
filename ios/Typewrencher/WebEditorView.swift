@@ -3,7 +3,7 @@ import WebKit
 import os
 
 // Hosts the web view that runs the page, which is the editor. The bridge hands "ready" to the EditorSession
-// (phase 2a, step 1: show the last document) and still stubs every other message. Bridge protocol 1 is unchanged.
+// (show the last document) and "textChanged" (autosave); every other message is still a stub (phase 2a). Bridge protocol 1 is unchanged.
 struct WebEditorView: UIViewRepresentable {
     func makeCoordinator() -> Bridge { Bridge() }
 
@@ -49,7 +49,7 @@ struct WebEditorView: UIViewRepresentable {
     // The native end of the bridge (js/host.js). Answers "ready"; every other message is a stub.
     final class Bridge: NSObject, WKScriptMessageHandlerWithReply, WKScriptMessageHandler, WKNavigationDelegate {
         private let log = Logger(subsystem: "Typewrencher", category: "bridge")
-        let session = EditorSession()
+        let session = EditorSession.shared
 
         // Debug builds also append every line to a file in the app's tmp folder, so a simulator run can be
         // read with `simctl get_app_container ... data` without Web Inspector.
@@ -80,6 +80,9 @@ struct WebEditorView: UIViewRepresentable {
                 replyHandler(nil, "not available yet")
             case "ready":
                 session.pageReady()
+                replyHandler(nil, nil)
+            case "textChanged":
+                if let newText = body["text"] as? String { session.textChanged(newText) }
                 replyHandler(nil, nil)
             default:
                 replyHandler(nil, nil)   // every other message is still a stub (phase 2a, later steps)
