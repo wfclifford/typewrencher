@@ -302,3 +302,39 @@ Seen in the simulator (accessibility tree of the open drawer): 3 rows (X, Alpha,
 Found but not changed: the root element gets `data-host="mac"` for any host, including the iOS app (it only selects which icons Open and Export show), so the name is misleading on iOS. Renaming it would touch CSS, JS and tests; left alone.
 
 **Owner's results.** iPhone 14 Pro: no row has a trash button, every row still shows its date (including the one tapped), and a single tap still opens a file (pass). Mac app (site copy built from this branch): the trash icon still replaces the date on hover, and a click still arms it as "Delete?" (pass; not confirmed on a file). iPad hover with a trackpad or mouse (a row must keep its date when hovered, since it has no trash button): **not run**, no pointer device available; the CSS rule that scopes the date-hiding to rows with a trash button is covered by a test but was not seen with a real hover.
+
+## Task: iOS phase 2b, a chosen documents folder
+
+Status: decided by the owner on 2026-11-24 (how the folder is chosen); the rest of the scope below is my proposal for the owner to correct before any code is written. Nothing built yet. Browsers and the Mac app must not change.
+
+Decisions already made (do not reopen): the app's own Documents folder stays the default; a chosen folder is optional; the folder is chosen with a **"Choose folder" button at the bottom of the files drawer, shown only in the iOS app** (it opens the system folder picker); no trash button on iOS; export through the share sheet; no iCloud claims; free Apple account.
+
+Scope (2b):
+- **Choose a folder.** A new additive bridge message `chooseFolder` (page to native) opens the system folder picker (`UIDocumentPickerViewController`, folders). The chosen folder is remembered as a security-scoped bookmark, listed in the drawer (title: the folder's name; the path line says where it is in the Files app as far as iOS reveals it), and becomes where New creates files. Cancelling the picker changes nothing and says nothing.
+- **Switching folders.** The current document is saved first; the app then opens the newest `.txt` in the new folder, or creates `untitled.txt` there. Files in the folder left behind are not touched. Picking the app's own folder (On My iPhone, Typewrencher) in the picker goes back to it.
+- **Remembering.** The last document is remembered with the folder it was in, so a relaunch reopens it in the right folder. If the chosen folder can no longer be reached (deleted, moved, an unavailable drive, a stale bookmark), the app falls back to its own folder with an inline message and never loses text.
+- **Open.** The page's Open button (message `open`, a stub today) shows the system file picker for one `.txt` (opened in place). A file outside the documents folder opens and saves where it is: atomic write first, and if iOS refuses (access to the file only, not its folder), an in-place write, as the Mac does; a failure is shown inline and the text stays on the page. The drawer keeps listing the documents folder; the open file simply has no highlighted row.
+- **Web change (a separate pull request, a site release):** `setFiles` gets an optional `chooseFolder: true` (the iOS app sends it; the Mac and browsers do not), which draws a "Choose folder" button at the bottom of the drawer; clicking it posts `{ type: 'chooseFolder' }`. Documented in the `js/host.js` header, tested, and the Mac rechecked (no button there). Do not touch js/, css/, index.html, sw.js or tools/ in the native pull request.
+- **Not in 2b:** reloading when a file changes from outside, coordinated reads and writes (`NSFileCoordinator`), and iCloud files that are not downloaded: that is 2c. No claim about iCloud Drive is made until 2c has run; picking a folder that happens to be in iCloud Drive is allowed, and anything odd that is seen is recorded, not fixed here.
+
+Assumptions to confirm (change them in the pull request if wrong):
+1. After choosing a folder, files left in the app folder stay there and are not listed.
+2. The picker returns a folder only; there is no "remember several folders" list.
+3. Bookmarks are created without `.withSecurityScope` (iOS), and access is started when the folder is chosen or reopened and kept for as long as it is the documents folder.
+
+Run these checks (simulator where possible; the owner runs the device ones and sends results back):
+2b.1 The "Choose folder" button shows in the iOS app's drawer and does not show on the Mac or in a browser (Mac recheck).
+2b.2 Choosing a folder in the picker lists its `.txt` files in the drawer, with the folder's name as the title.
+2b.3 New creates `untitled.txt` in the chosen folder (seen in the Files app), and an empty untitled file is removed when left, as in 2a.
+2b.4 Typing saves into a file in the chosen folder (read it in the Files app); force-quit and relaunch from the Home Screen reopens the last file from the chosen folder (the bookmark survives).
+2b.5 Switching files and renaming inside the chosen folder work as in 2a (a taken name is refused inline).
+2b.6 Removing or moving the chosen folder in the Files app, then relaunching: the app falls back to its own folder with an inline message, no crash, no lost text.
+2b.7 Open picks a single `.txt` from elsewhere; it opens, edits save in place or fail inline, never silently.
+2b.8 Cancelling either picker changes nothing and shows nothing.
+2b.9 Choosing the app's own folder in the picker goes back to the app folder; its files are all still there.
+2b.10 No alert, sheet or toast other than the two system pickers and the share sheet.
+2b.11 A folder chosen in iCloud Drive: record what is seen (no claims).
+
+Results to record, each as pass, fail or not run, with the exact error or what was seen, the device and iOS version; the Xcode version; any web change that would be needed, listed but not made.
+
+Results: (empty until run)
