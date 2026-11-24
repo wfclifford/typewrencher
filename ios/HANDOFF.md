@@ -131,7 +131,7 @@ Widths are my readings of three screenshots the owner supplied (screenshot pixel
 
 **Decision for the owner:** locking the iPhone to portrait is one line in the build settings (`INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone`). "Landscape only with an external keyboard" cannot be set in the plist; it would need code that watches for a keyboard and restricts orientation, which is more than this phase and is not built.
 
-**Deployment target:** the owner's iPad runs iPadOS 17.7.11, so the iOS 18.0 target above would not install there. It is being lowered to 17.0 (builds for the simulator; the change is in the working tree and not yet committed because that file also carries the owner's team ID).
+**Deployment target:** the owner's iPad runs iPadOS 17.7.11, so the iOS 18.0 target first committed would not install there. It is now 17.0 (builds for the simulator). The development team is deliberately not in the committed project file (the repo is public): set your own team in Signing & Capabilities, and do not commit that line.
 
 **For the owner to run on devices:** 1.3 to 1.6, 1.10 and 1.11 as listed, plus 1.2, 1.7, 1.9, 1.12, 1.13 and landscape for 1.4. Decision gate (1.3, 1.5): not decided here.
 
