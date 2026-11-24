@@ -196,3 +196,33 @@ Status: built, tests pass (245), seen on the iPhone 17 simulator, and confirmed 
 Status: built; seen in the iPhone 17 simulator only. **Not run on the iPhone 14 Pro.** iPad unchanged.
 
 The owner decided that landscape leaves too little room on an iPhone with the keyboard open, so the iPhone app runs in portrait only. `INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone` is now `UIInterfaceOrientationPortrait`; the iPad keeps all four orientations (read from the built `Info.plist` with `plutil -p`). In the simulator, turning the device to landscape left the app's UI orientation at Portrait. Not done: landscape on an iPhone with an external keyboard, which a plain build setting cannot express (the owner decided to wait on that). The earlier "iPhone landscape for Lock Rhymes height" check is no longer needed.
+
+## Task: iOS phase 2, files (2a: the app's Documents folder)
+
+Status: decided by the owner on 2026-11-23; nothing built yet. Phase 1 passed the gate (the web view stays; see Results above). Browsers and the Mac app must not change.
+
+Decisions already made (do not reopen): documents in 2a live in the app's own Documents folder, visible in the Files app, so no picker is needed to start; files are deleted and moved in the Files app, so **no trash button on iOS**; export uses the system share sheet (the one accepted exit); no iCloud claims; free Apple account, no TestFlight; bundle identifier `io.github.wfclifford.Typewrencher.ios`; the iPhone is portrait only; one window.
+
+How the work is sliced:
+- **2a (this task):** reopen the last file at launch, autosave a moment after typing stops, New (`untitled.txt`, `untitled 2.txt`, ...), rename, the files drawer for the Documents folder, opening a file from that drawer, and export through the share sheet.
+- **2b (later):** a chosen documents folder through the document picker, kept as a security-scoped bookmark, and Open for a single `.txt` elsewhere.
+- **2c (later):** reload when a file changes from outside (file coordination, a refresh when the app returns to the foreground), and what happens with iCloud files that are not downloaded. No claims until run.
+
+Build for 2a: the native side of bridge protocol 1 in `ios/Typewrencher/` (Swift, no dependencies, protocol unchanged): `ready` (reopen the last document or start `untitled.txt`, then `setDocument` and `setFiles`), `textChanged` (autosave), `new`, `rename` (refuse a taken name, send the old name back), `files` and `openFile` (list the Documents folder's `.txt` files, newest first, and switch), `export` (share sheet, reply when finished or cancelled), `notify` for inline messages. `open`, `grantFolder` and `trash` stay stubs in 2a. Read and write plain UTF-8; a file that is not UTF-8 is reported inline, never overwritten. Save on leaving the foreground. Use `mac/Typewrencher/EditorSession.swift` as the reference for behavior, not as code to copy blindly (AppKit parts do not apply).
+
+Web changes (separate pull request, listed here so they are not forgotten; each is a site release with the stamp, tests and the Mac recheck): hide the per-row trash button on iOS (the page needs a capability or flag from the host); wording that assumes the Mac ("Allow access", Finder); check that "Done" shows after a share-sheet export. Do not touch js/, css/, index.html, sw.js or tools/ in the native pull request.
+
+Run these checks (simulator where possible; the owner runs the device ones and sends results back):
+2a.1 A new launch opens an empty `untitled.txt` that exists in the app's Documents folder and shows in the Files app.
+2a.2 Typing saves to that file within about a second; force-quit right after typing and relaunch: the text is there.
+2a.3 Switching documents (drawer) after typing keeps the typing in the file you left, and undo does not bring back the other file's text (the check phase 1 could not run).
+2a.4 New creates `untitled 2.txt` and an empty untitled file left behind is cleaned up or kept as decided in Results.
+2a.5 Rename: a free name renames the file; a taken name is refused inline and the field goes back; name characters the page already strips stay stripped.
+2a.6 A file added or deleted in the Files app shows in the drawer after the app returns to the foreground (device).
+2a.7 Export opens the share sheet; sharing shows "Done" on the button, cancelling closes it quietly.
+2a.8 A non-UTF-8 file opens with an inline message and is not overwritten.
+2a.9 No alerts, sheets or toasts interrupt writing; the share sheet is the only exit.
+
+Results to record, each as pass, fail or not run, with the exact error or what was seen, the device and iOS version; the Xcode version; any web change that would be needed, listed but not made.
+
+Results: (empty until run)
