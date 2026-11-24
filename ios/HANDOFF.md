@@ -241,7 +241,7 @@ Seen in the simulator (read from the app's container with `simctl`, and from scr
 
 Known, not fixed yet: every launch where the last file cannot be read leaves another empty `untitled N.txt` behind, and an empty untitled file is never cleaned up. That belongs to 2a.4 (decide in Results whether an empty untitled file is removed when left, as on the Mac, or kept).
 
-**Step 3: the files drawer, switching, New and rename (built; simulator only).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. **Not run on the iPhone 14 Pro or the iPad.** The bridge now also handles `new`, `files`, `openFile` and `rename`; `open`, `grantFolder`, `trash`, `close` and `export` are still stubs.
+**Step 3: the files drawer, switching, New and rename (built; simulator, and the checks below on the iPhone 14 Pro).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. **Not run on the iPad.** The bridge now also handles `new`, `files`, `openFile` and `rename`; `open`, `grantFolder`, `trash`, `close` and `export` are still stubs.
 
 Decision (owner, 2026-11-24): an empty `untitled` file that this app created is deleted when the person leaves it (iOS has no Trash for app files; nothing is lost; no other file is ever removed). A renamed file is kept even when empty.
 
@@ -259,7 +259,9 @@ Seen in the simulator (files read from the app's container):
 1. **The first tap on a drawer row does nothing on iOS; the second tap opens the file.** The page's CSS reveals the trash button and hides the date on `li:hover` (css/styles.css, `.files-list li:hover .file-trash` and `.file-when`). On a touch screen iOS treats the first tap as the "hover" and only the second as the click. Seen in the simulator: the first tap sent no `openFile`; the second did. A fix is `@media (hover: hover)` around those rules, or never revealing content on hover on touch. This will make the drawer feel broken on the iPhone, so it should go in the first web pull request.
 2. The accessibility tree lists a "Move <name> to the Trash" button for every row, including on iOS. The planned web change (no trash button on iOS) covers it.
 
-Not run yet after step 3: export (2a.7) and the alerts check (2a.9); on a device: undo after switching, the Files-app refresh, and the drawer.
+**Owner's results on the iPhone 14 Pro for step 3: "all steps pass as described" (pass).** That covers: opening a file from the drawer (it took two taps, as finding 1 describes, so the two-tap behavior is confirmed on the device), switching between two files, undo after typing and switching (the other file's text did not come back; **2a.3 pass**), and a file added or deleted in the Files app showing in the drawer after returning to the app (**2a.6 pass**). The owner's wording did not itemize each step; recorded as a summary.
+
+Not run yet after step 3: export (2a.7) and the alerts check (2a.9); the iPad.
 
 **Step 2: autosave (built; simulator, and the force-quit check on the iPhone 14 Pro).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. **Otherwise not run on the iPhone; not run on the iPad.**
 
