@@ -2293,3 +2293,14 @@ test('Export failure on very narrow screens shows in the Name row, not on the bu
   bad.flush(2500);
   assert.equal(m.fnameNote.textContent, ''); assert.equal(m.savebox.classList.contains('flash-error'), false);
 });
+test('Files drawer: closing it with a pointer returns the caret to the text; opening it, or closing it from the keyboard, does not', () => {
+  const b = bootHost(), n = b.nodes; b.host();
+  const focused = () => b.document.activeElement;
+  n.filesBtn.focus(); n.filesBtn.emit('click', {detail: 1});               // open with a pointer
+  assert.equal(n.filesPanel.hidden, false); assert.notEqual(focused(), n.ed, 'opening leaves focus alone');
+  n.filesBtn.emit('click', {detail: 1});                                     // close with a pointer
+  assert.equal(n.filesPanel.hidden, true); assert.equal(focused(), n.ed, 'the caret is back in the text');
+  n.filesBtn.emit('click', {detail: 1}); n.filesBtn.focus();                 // open, put focus on the button
+  n.filesBtn.emit('click', {detail: 0});                                     // close from the keyboard (Space or Enter)
+  assert.equal(n.filesPanel.hidden, true); assert.equal(focused(), n.filesBtn, 'a keyboard user keeps focus on the button');
+});
