@@ -115,13 +115,19 @@
   if (host) { saveLabel.textContent = saveIdleLabel; saveBtn.setAttribute("aria-label", saveIdleName); }
 
   // The button shows the short label; the status line and the button's accessible name carry the detail, such as "Done title.txt".
-  function flash(label, detail) {
+  // Very narrow screens (css/styles.css, under 360px) hide the idle label: "Done" then shows on the button
+  // (class flashing); a failure shows in the Name row instead (class flash-error, text in fnameNote), so the
+  // buttons row does not wrap. Wider screens always show the label on the button.
+  var fnameNote = document.getElementById("fnameNote");
+  function flash(label, detail, failed) {
     saveLabel.textContent = label;
-    saveBtn.classList.add("flashing"); // narrow screens hide the idle label (css/styles.css) but show this one
+    saveBtn.classList.toggle("flashing", !failed);
+    savebox.classList.toggle("flash-error", !!failed);
+    fnameNote.textContent = failed ? label : "";
     say(detail || label);
     saveBtn.setAttribute("aria-label", detail || label);
     clearTimeout(resetTimer);
-    resetTimer = setTimeout(function () { saveLabel.textContent = saveIdleLabel; saveBtn.classList.remove("flashing"); saveBtn.setAttribute("aria-label", saveIdleName); }, 2500);
+    resetTimer = setTimeout(function () { saveLabel.textContent = saveIdleLabel; saveBtn.classList.remove("flashing"); savebox.classList.remove("flash-error"); fnameNote.textContent = ""; saveBtn.setAttribute("aria-label", saveIdleName); }, 2500);
   }
   function fileName() {
     var n = fname.value.replace(/[\u0000-\u001f\\\/:*?"<>|]/g, "").replace(/\.txt$/i, "").replace(/^[\s.]+|[\s.]+$/g, "");
@@ -203,7 +209,7 @@
       flash("Done", "Done " + fileName());
     }).catch(function (e) {
       if (e && e.code === "declined") return;
-      flash("Couldn\u2019t save");
+      flash("Couldn\u2019t save", undefined, true);
     });
   });
 

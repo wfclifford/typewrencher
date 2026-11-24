@@ -2272,11 +2272,24 @@ test('Name field on phones: own full-width row under 480px, 16px on touch screen
 });
 test('Export button on very narrow screens: idle label hidden under 360px, label shown while it flashes, still 44px wide', () => {
   const css = read('css/styles.css');
-  assert.match(css, /@media \(max-width: 359px\) \{\s*#save:not\(\.flashing\) #saveLabel \{ display: none; \}\s*#save:not\(\.flashing\) \{ min-width: var\(--hit\); justify-content: center; \}\s*\}/);
+  assert.match(css, /@media \(max-width: 359px\) \{\s*#save:not\(\.flashing\) #saveLabel \{ display: none; \}\s*#save:not\(\.flashing\) \{ min-width: var\(--hit\); justify-content: center; \}/);
   const b = boot(), n = b.nodes; n.ed.value = 'cat'; n.ed.emit('input');
   assert.equal(n.save.classList.contains('flashing'), false, 'idle: no flash class');
   n.save.click(); b.flush(60);
   assert.equal(n.save.classList.contains('flashing'), true, 'the label shows while Done flashes'); assert.equal(n.saveLabel.textContent, 'Done');
   b.flush(2500);
   assert.equal(n.save.classList.contains('flashing'), false, 'and goes again'); assert.equal(n.saveLabel.textContent, '.txt');
+});
+test('Export failure on very narrow screens shows in the Name row, not on the button; cleared after 2.5s; wider screens keep the button label', async () => {
+  const css = read('css/styles.css'), html = read('index.html');
+  assert.match(css, /\.fname-note \{ display: none; \}/);
+  assert.match(css, /@media \(max-width: 359px\) \{[^@]*\.savebox\.flash-error \.fname-text \{ display: none; \}\s*\.savebox\.flash-error \.fname-note \{ display: inline;/);
+  assert.match(html, /<span id="fnameNote" class="fname-note" aria-hidden="true"><\/span>/, 'decorative: the status line announces the failure');
+  const bad = bootHost({}, {reply: m => m.type === 'export' ? Promise.reject(new Error('disk full')) : Promise.resolve()}), m = bad.nodes;
+  m.ed.value = 'cat'; m.ed.emit('input'); m.save.click(); await new Promise(r => setImmediate(r)); bad.flush(60);
+  assert.equal(m.fnameNote.textContent, 'Couldn\u2019t save'); assert.equal(m.savebox.classList.contains('flash-error'), true);
+  assert.equal(m.save.classList.contains('flashing'), false, 'the button stays icon-only at that width'); assert.equal(m.saveLabel.textContent, 'Couldn\u2019t save', 'wider screens still show it on the button');
+  assert.equal(m.status.textContent, 'Couldn\u2019t save');
+  bad.flush(2500);
+  assert.equal(m.fnameNote.textContent, ''); assert.equal(m.savebox.classList.contains('flash-error'), false);
 });
