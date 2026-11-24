@@ -3,7 +3,7 @@ import WebKit
 import os
 
 // Hosts the web view that runs the page, which is the editor. The bridge hands "ready" to the EditorSession
-// (show the last document), "textChanged", "new", "files", "openFile", "rename" and "export"; every other message is still a stub (phase 2a). Bridge protocol 1 is unchanged.
+// (show the last document), "textChanged", "new", "files", "openFile", "rename", "export" and "chooseFolder"; every other message is still a stub (phase 2a). Bridge protocol 1 is unchanged.
 struct WebEditorView: UIViewRepresentable {
     func makeCoordinator() -> Bridge { Bridge() }
 
@@ -97,6 +97,9 @@ struct WebEditorView: UIViewRepresentable {
                     self?.trace("export reply: \(error ?? "ok")")
                     replyHandler(nil, error)
                 }
+            case "chooseFolder":
+                session.chooseFolder()
+                replyHandler(nil, nil)
             case "rename":
                 session.rename(to: body["name"] as? String ?? "") { error in replyHandler(nil, error) }
             default:

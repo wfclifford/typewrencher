@@ -1,25 +1,58 @@
 import UIKit
 import UniformTypeIdentifiers
 
-// The app's own Documents folder, which the Files app shows under Typewrencher (see Info.plist), and the record
-// of which document was open last. Phase 2a keeps every document here; a chosen folder comes later.
+// The folder documents live in, and what is remembered about the files in it. By default that is the app's own
+// Documents folder, which the Files app shows under Typewrencher (see Info.plist); the person can choose another
+// folder instead (ChosenFolder.swift). Everything remembered about a file (the last document, the untitled files this
+// app created) is keyed by the file's folder, so a file in one folder is never taken for a same-named file in another.
 struct DocumentStore {
-    private static let lastKey = "lastDocumentName"
+    static let appFolder = URL.documentsDirectory
+    private static let lastKey = "lastDocumentNames"   // [folder key: file name]
+
     let folder: URL
 
-    init(folder: URL = .documentsDirectory) { self.folder = folder }
+    init(folder: URL = DocumentStore.appFolder) { self.folder = folder }
 
     // "Poem" for Poem.txt, as the page's name field shows it.
     static func displayName(_ url: URL) -> String { url.deletingPathExtension().lastPathComponent }
 
-    // Only the file's name is remembered: the container's path changes between installs and updates.
+    // MARK: Which folder
+
+    static func sameFolder(_ a: URL, _ b: URL) -> Bool {
+        a.standardizedFileURL.resolvingSymlinksInPath().path == b.standardizedFileURL.resolvingSymlinksInPath().path
+    }
+
+    var isAppFolder: Bool { Self.sameFolder(folder, Self.appFolder) }
+
+    // "app" for the app's own folder (its container's path changes between installs and updates), else the folder's path.
+    static func folderKey(_ folder: URL) -> String {
+        sameFolder(folder, appFolder) ? "app" : folder.standardizedFileURL.resolvingSymlinksInPath().path
+    }
+
+    private static func key(of file: URL) -> String { folderKey(file.deletingLastPathComponent()) }
+
+    // MARK: The last document
+
+    // Only the file's name is remembered, with its folder's key. Earlier versions kept one name for the app folder.
+    private static var lastNames: [String: String] {
+        var names = UserDefaults.standard.dictionary(forKey: lastKey) as? [String: String] ?? [:]
+        if names["app"] == nil, let old = UserDefaults.standard.string(forKey: "lastDocumentName") { names["app"] = old }
+        return names
+    }
+
     var lastFile: URL? {
-        guard let name = UserDefaults.standard.string(forKey: Self.lastKey), !name.contains("/") else { return nil }
+        guard let name = Self.lastNames[Self.folderKey(folder)], !name.contains("/"), !name.isEmpty else { return nil }
         let url = folder.appendingPathComponent(name)
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 
-    func remember(_ url: URL) { UserDefaults.standard.set(url.lastPathComponent, forKey: Self.lastKey) }
+    func remember(_ url: URL) {
+        var names = Self.lastNames
+        names[Self.key(of: url)] = url.lastPathComponent
+        UserDefaults.standard.set(names, forKey: Self.lastKey)
+    }
+
+    // MARK: Listing
 
     // The .txt files in the folder, newest first, for the files drawer.
     func textFiles() -> [(name: String, modified: Date)] {
@@ -35,11 +68,17 @@ struct DocumentStore {
     }
 
     // The Files app shows the app's Documents folder under the app's name, so the drawer does too.
-    var folderLabel: String { "Typewrencher" }
+    var folderLabel: String { isAppFolder ? "Typewrencher" : folder.lastPathComponent }
 
-    // Where the folder is in the Files app, for the drawer's last line.
+    // Where the folder is in the Files app, for the drawer's last line. iOS does not say where an arbitrary chosen
+    // folder is, so only the places that are recognizable get a location; any other folder is shown by its name.
     var displayPath: String {
-        (UIDevice.current.userInterfaceIdiom == .pad ? "On My iPad" : "On My iPhone") + "/" + folderLabel
+        if isAppFolder { return (UIDevice.current.userInterfaceIdiom == .pad ? "On My iPad" : "On My iPhone") + "/" + folderLabel }
+        let path = folder.standardizedFileURL.resolvingSymlinksInPath().path
+        if let range = path.range(of: "/com~apple~CloudDocs") {
+            return "iCloud Drive" + String(path[range.upperBound...])
+        }
+        return folderLabel
     }
 
     // Like the page's export name: no path or reserved characters, no ".txt", no spaces or dots at the ends.
@@ -50,18 +89,27 @@ struct DocumentStore {
         return name.trimmingCharacters(in: CharacterSet(charactersIn: " .").union(.whitespacesAndNewlines))
     }
 
-    // The untitled files this app created. Only these, and only while they are still empty, are ever removed.
+    // MARK: Untitled files
+
+    // The untitled files this app created, as "folder key|name". Only these, and only while they are still empty, are
+    // ever removed. An earlier version stored bare names, all in the app folder; they are read as "app|name".
     private static let untitledKey = "untitledFiles"
-    private var untitled: Set<String> { Set(UserDefaults.standard.stringArray(forKey: Self.untitledKey) ?? []) }
-    func isUntitled(_ url: URL) -> Bool { untitled.contains(url.lastPathComponent) }
+    private static var untitled: Set<String> {
+        Set((UserDefaults.standard.stringArray(forKey: untitledKey) ?? []).map { $0.contains("|") ? $0 : "app|" + $0 })
+    }
+    private static func entry(_ url: URL) -> String { key(of: url) + "|" + url.lastPathComponent }
+
+    func isUntitled(_ url: URL) -> Bool { Self.untitled.contains(Self.entry(url)) }
+
     func setUntitled(_ url: URL, _ on: Bool) {
-        var all = untitled
-        if on { all.insert(url.lastPathComponent) } else { all.remove(url.lastPathComponent) }
+        var all = Self.untitled
+        if on { all.insert(Self.entry(url)) } else { all.remove(Self.entry(url)) }
         UserDefaults.standard.set(Array(all), forKey: Self.untitledKey)
     }
 
     // An untitled file this app created that is still empty (zero bytes) is deleted when the person leaves it.
-    // iOS has no Trash for an app's own files; nothing is lost, the file has no content. Any other file is kept.
+    // iOS has no Trash for an app's own files; nothing is lost, the file has no content. Any other file is kept,
+    // including an empty untitled.txt the person made themselves in a chosen folder.
     func removeIfEmptyUntitled(_ url: URL) {
         guard isUntitled(url) else { return }
         let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.intValue

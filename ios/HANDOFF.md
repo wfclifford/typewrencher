@@ -340,4 +340,27 @@ Run these checks (simulator where possible; the owner runs the device ones and s
 
 Results to record, each as pass, fail or not run, with the exact error or what was seen, the device and iOS version; the Xcode version; any web change that would be needed, listed but not made.
 
-Results: (empty until run)
+Results: see "2b progress" below (filled in as each step is built).
+
+### 2b progress (branch `ios-phase-2b`, in order)
+
+**Web step (done, merged as #61, live as release 0.1.34):** `setFiles` gets an optional `chooseFolder: true` that draws the "Choose folder" button at the bottom of the drawer; the click posts `{ type: 'chooseFolder' }`.
+
+**Step 2: the folder picker and bookmark storage (built; simulator only).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. **Not run on the iPhone 14 Pro or the iPad.**
+
+Built: `ChosenFolder.swift` (the remembered folder as a bookmark; `FolderPicker`, the system folder picker); `DocumentStore` now keys everything it remembers by folder (the last document per folder, and the untitled files the app created as "folder|name", reading the old bare names as the app folder); `EditorSession` resolves the chosen folder at launch (falls back to the app's own folder if it cannot be reached, with no message yet), handles `chooseFolder`, sends `chooseFolder: true` and `trash: false`, highlights the open file only if it is in the listed folder, renames inside the file's own folder, and keeps access to a folder started for as long as it is the documents folder or holds the open file. `chooseFolder` is a new bridge message handled in the iOS app; `open`, `grantFolder`, `trash` and `close` are still stubs.
+
+Seen in the simulator (test folders `Lyrics` with `Song A`, `Song B` and an empty `untitled.txt` made "by the person", and `Poems`, put in the simulator's On My iPhone storage):
+- 2b.1 (iOS half): the drawer shows a "Choose folder" button under the path line. Not run: that the Mac and browsers show none (the tests say so; the Mac recheck is still to do).
+- 2b.2: Choose folder opened the real system folder picker; choosing Lyrics listed its 3 files with the title "Lyrics" and the path line "Lyrics" (iOS does not say where an arbitrary folder is, so only the app folder ("On My iPhone/Typewrencher") and iCloud Drive folders get a location; the iCloud branch was **not run**). No row was highlighted, since the open document was still in the app folder.
+- 2b.3: with a non-blank document open, `+` created `untitled 2.txt` **in Lyrics** (taking a free name next to the person's `untitled.txt`); switching to Song A then deleted the empty `untitled 2.txt` and **left the person's empty `untitled.txt` alone** (2b.9b, seen once).
+- 2b.4: after a relaunch the app reopened in Lyrics with Song A open (the bookmark survived and the last document is remembered per folder). Typing into Song A saved into the file in Lyrics (`Song A.txt` read back correct). A second launch after choosing the On My iPhone root restored that folder too.
+- 2b.8: closing the picker by swiping it down changed nothing and showed nothing, and the Choose folder button worked again afterwards.
+
+**Found and fixed in this step:** when a different folder was chosen, the first version stopped access to the folder the open document was in. The simulator does not enforce that, so the save still worked there; on a device a save could have been refused while the document stayed open. Access is now kept for the documents folder and for the folder of the open file, and ended when neither needs it.
+
+**Not run, step 2:**
+- **2b.9: choosing the app's own folder (Typewrencher) in the picker to go back to the default.** In the simulator the picker would not open the Typewrencher folder (tap and double tap did nothing). I do not know whether that is the simulator or how iOS behaves. **If it cannot be picked on the device, there is no way back to the default folder and a "Use app folder" choice is needed.** The code path (`sameFolder` against the app's Documents folder) exists but has not been run.
+- That a device enforces the folder access the way the code assumes (the simulator does not): this is the main reason for the iPhone test of 2b.4.
+- 2b.5 (rename and switching inside a chosen folder), 2b.6 (the chosen folder removed), 2b.7 (Open), 2b.10, 2b.11 (iCloud Drive).
+- The inline notice after a folder switch, and switching to a document in the new folder (step 3): after choosing a folder the open document stays where it is and the drawer lists the new folder.
