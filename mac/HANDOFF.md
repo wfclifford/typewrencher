@@ -21,7 +21,7 @@ Checked on the Mac (macOS 27.2) in a Debug build run from Xcode, `main` at 58862
 - Mouse: with the drawer open, clicking the drawer button closed it and the caret was in the text (seen in one capture; the caret blinks).
 - Keyboard (Tab to the button, Space, focus stays on the button): **pass, by the owner on the Mac.** My own attempt was inconclusive: Tab and Shift-Tab moved focus between the editor and the Name field, but I could not see focus on the header buttons in the screenshots and never saw it on the drawer button. The owner ran it by hand afterwards and reports it passes.
 
-**d. Name field select on focus (#43).** Pass for the selection: in a new untitled document, clicking the Name field selected "untitled" (and Tab into the field on an existing document selected "Sonnet"). Typing over the selected name: pass, by the owner on the Mac (I did not run it).
+**d. Name field select on focus (#43).** Pass for the selection: in a new untitled document, clicking the Name field selected "untitled" (and Tab into the field on an existing document selected "Sonnet"). Typing over the selected name in a new untitled document: pass, by the owner on the Mac (I did not run it).
 
 **e. Rhymes and page width, Lock Rhymes height on and off.**
 - Lock on (it was on, left over from the earlier task): typing the made-up word `zzqxv` kept the Rhymes panel at its full height (about 176 pt, the same as with rhymes listed) and "No pronunciation found for “zzqxv”." showed inside it.
