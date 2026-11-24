@@ -139,12 +139,12 @@ Widths are my readings of three screenshots the owner supplied (screenshot pixel
 
 ## Follow-up: iPhone header out of reach with the keyboard open
 
-Status: fix built and checked in the simulator only. **Not run on the iPhone**, so the owner needs to confirm it there.
+Status: fix built and checked in the simulator, and confirmed by the owner on the iPhone 14 Pro (portrait): with the keyboard open the header and the files drawer button are visible and tappable.
 
 **What was wrong.** Not scrolling: with the keyboard up the web view's scroll offset stayed (0, 0) and its frame stayed full-screen. The page correctly switched to its keyboard layout (`html.kb kb-tall`) and pinned `.app` to the top edge (`position: fixed; top: var(--vvt, 0px)` in `css/styles.css`), which ignores the top safe area. Without the keyboard `.app` starts 62 pt down on the iPhone 17 simulator (the safe-area inset) and the header is at 78; with it, the header was at 16, under the status bar and Dynamic Island, where it cannot be tapped. Safari does not show this because its viewport already starts below that area. Seen on the iPhone 17 simulator (iOS 27.2); the owner's iPhone 14 Pro report matches the screenshot.
 
 **The fix (iOS only, no web file touched).** `ios/Typewrencher/WebEditorView.swift` injects one style rule at document end: `html.kb .app { top: calc(var(--vvt, 0px) + env(safe-area-inset-top, 0px)); height: calc(var(--vvh, 100%) - env(safe-area-inset-top, 0px)); }`. A comment there says to delete it if `css/styles.css` ever handles the inset.
 
-**Checked in the simulator (iPhone 17, iOS 27.2, portrait).** With the keyboard open the header sits below the status bar, in the same place as without the keyboard, and tapping the files drawer button opened the drawer. Not run: the iPhone 14 Pro, landscape, the iPad, Show rhymes with the keyboard open, a long document scrolled with the keyboard open.
+**Checked in the simulator (iPhone 17, iOS 27.2, portrait).** With the keyboard open the header sits below the status bar, in the same place as without the keyboard, and tapping the files drawer button opened the drawer. Not run: landscape, the iPad, Show rhymes with the keyboard open, a long document scrolled with the keyboard open.
 
 **Decision for the owner: where the rule should live.** The same rule in `css/styles.css` would fix it at the source, but it is a site release, it changes the layout in browsers and installed web apps that I have not tested (in Safari the inset is 0 with the keyboard open, so it should be a no-op there, but that is unverified), and it needs the stamp, tests and a release. Left as a native rule for now. Not changed here: the system's form-accessory bar (up, down and check buttons) above the keyboard still takes about 50 pt; hiding it is possible natively and was not tried.
