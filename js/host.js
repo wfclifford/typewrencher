@@ -25,8 +25,10 @@
 //                                                  Trashing the open document switches to a new empty one first.
 //   native -> page, by calling window.TypewrencherHost (defined in js/app.js)
 //     setDocument({ text, name })                  show this text and name; sends neither textChanged nor rename back
-//     setFiles({ access, folder, path, current, files: [{ name, modified }] })
-//                                                  the drawer's list; access is 'granted', 'needed' or 'none' (untitled)
+//     setFiles({ access, folder, path, current, files: [{ name, modified }], trash })
+//                                                  the drawer's list; access is 'granted', 'needed' or 'none' (untitled);
+//                                                  trash is optional: false hides the rows' trash buttons (the iPhone and
+//                                                  iPad app, which has none); left out or true, the buttons show (the Mac app)
 //     notify(message, { sticky })                  show a short message on the notice line (no alerts in the app);
 //                                                  it clears after 12 s, or stays if sticky until replaced;
 //                                                  notify('') clears it. The second argument is optional.

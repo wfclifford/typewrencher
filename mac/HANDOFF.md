@@ -4,6 +4,14 @@ This file is how the planning chat and the coding session pass work to each othe
 
 How to use it: pull `main`, read the task below, do it on a branch, then fill in Results in the same branch and open a pull request. Do not merge it.
 
+## Recheck: trash buttons still show on the Mac after `setFiles` gained `trash` (#59)
+
+Checked by the owner on the Mac (Debug build run from Xcode, site copy built from the `hide-trash-on-ios` branch, Clean Build Folder first). I did not run the Mac app for this one; this is the owner's report, recorded as given. The Mac sends no `trash` field, so its drawer should be unchanged.
+
+- Hover a drawer row: the trash icon still replaces the date. **Pass.**
+- Click the trash icon once: it arms and reads "Delete?" (not confirmed on a file). **Pass.**
+- The owner's summary was "all pass" for the three items offered (the two above and the page opening as before); the third was not itemized.
+
 ## Recheck: files drawer touch fixes (#55) in the Mac app
 
 Checked by the owner on the Mac (Debug build run from Xcode, site copy for the `drawer-touch-hover` branch built with `node tools/build-site.js mac/Typewrencher/site`, Clean Build Folder first). I did not run the Mac app for this one; this is the owner's report, recorded as given: items 2 to 6 of the list below all pass.
