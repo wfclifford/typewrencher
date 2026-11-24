@@ -190,3 +190,9 @@ Status: built, tests pass (245), seen on the iPhone 17 simulator, and confirmed 
 **Change (web, a site release).** `js/app.js`: when the files drawer button closes the drawer with a finger or the mouse, `ed.focus()` puts the caret back in the text (the keyboard comes back on an iPhone or iPad). Opening it does not touch focus. A click from the keyboard (event `detail` 0, Space or Enter) keeps focus on the button, so a keyboard user does not lose their place. **The Mac app changes too:** a mouse click that closes the drawer now returns the caret to the text there as well; the Mac app was not run. Closing the drawer another way (Reset to defaults) is unchanged. One test added.
 
 **Seen on the iPhone 17 simulator (iOS 27.2, real taps).** With the drawer open and no keyboard, tapping the drawer button closed it, and the keyboard came back with the caret in the text (the hierarchy shows the text view "Keyboard Focused").
+
+## Follow-up: iPhone locked to portrait
+
+Status: built; seen in the iPhone 17 simulator only. **Not run on the iPhone 14 Pro.** iPad unchanged.
+
+The owner decided that landscape leaves too little room on an iPhone with the keyboard open, so the iPhone app runs in portrait only. `INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone` is now `UIInterfaceOrientationPortrait`; the iPad keeps all four orientations (read from the built `Info.plist` with `plutil -p`). In the simulator, turning the device to landscape left the app's UI orientation at Portrait. Not done: landscape on an iPhone with an external keyboard, which a plain build setting cannot express (the owner decided to wait on that). The earlier "iPhone landscape for Lock Rhymes height" check is no longer needed.
