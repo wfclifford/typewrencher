@@ -12,6 +12,7 @@ final class EditorSession {
     private var store: DocumentStore
     private var held: [URL] = []       // folders access has been started for; kept while they are the documents folder or hold the open file
     private var picker: FolderPicker?   // held while the folder picker is showing (its delegate is weak)
+    private var launchNotice: String?   // said once the page is ready: the chosen folder could not be reached
     private var launched = false
     private var filesOpen = false
     private(set) var fileURL: URL?
@@ -33,6 +34,12 @@ final class EditorSession {
             store = DocumentStore(folder: folder)
         } else {
             store = DocumentStore()
+            if ChosenFolder.isRemembered {
+                // The bookmark is kept: an unavailable drive or a folder that is back later works again. Until then the
+                // app's own folder is used, and the person is told.
+                let name = ChosenFolder.rememberedName.map { "\u{201c}\($0)\u{201d}" } ?? "the folder you chose"
+                launchNotice = "Typewrencher couldn\u{2019}t reach \(name), so it is using its own folder. Choose the folder again to go back."
+            }
         }
     }
 
@@ -43,6 +50,7 @@ final class EditorSession {
         if !launched {
             launched = true
             launch()
+            if let notice = launchNotice { launchNotice = nil; notify(notice) }
         } else {
             push()
         }
@@ -322,35 +330,66 @@ final class EditorSession {
         chooser.present(on: top)
     }
 
-    // The folder the picker returned becomes where New creates files and what the drawer lists. The document that is
-    // open stays open where it is (switching to a document in the new folder is the next step), so access to the folder
-    // it is in is kept until it is left.
+    // The folder the picker returned becomes the documents folder, in turn with other operations: the open document is
+    // saved first (if that fails nothing changes), then the app moves to a document in the new folder and says so. Access
+    // to the folder the open document was in is kept until it is left.
     private func folderChosen(_ folder: URL) {
         let started = folder.startAccessingSecurityScopedResource()
-        if DocumentStore.sameFolder(folder, DocumentStore.appFolder) {
-            ChosenFolder.clear()
-            if started { folder.stopAccessingSecurityScopedResource() }
-            useFolder(nil)
-            return
-        }
-        guard started else {
+        let isAppFolder = DocumentStore.sameFolder(folder, DocumentStore.appFolder)
+        if !isAppFolder && !started {
             return notify("Typewrencher couldn\u{2019}t get access to \(folder.lastPathComponent).")
         }
-        do {
-            try ChosenFolder.save(folder)
-        } catch {
-            folder.stopAccessingSecurityScopedResource()
-            return notify("Typewrencher couldn\u{2019}t remember \(folder.lastPathComponent): \(Self.reason(error)).")
+        let endAccess = { if started { folder.stopAccessingSecurityScopedResource() } }
+        perform { finished in
+            self.currentText { _ in
+                guard self.saveNow() else { endAccess(); return finished() }
+                if isAppFolder {
+                    ChosenFolder.clear()
+                    endAccess()
+                } else {
+                    do { try ChosenFolder.save(folder) } catch {
+                        endAccess()
+                        self.notify("Typewrencher couldn\u{2019}t remember \(folder.lastPathComponent): \(Self.reason(error)).")
+                        return finished()
+                    }
+                    self.hold(folder)
+                }
+                self.switchStore(to: isAppFolder ? DocumentStore() : DocumentStore(folder: folder))
+                finished()
+            }
         }
-        hold(folder)
-        useFolder(folder)
     }
 
-    // Makes this the documents folder (nil: the app's own).
-    private func useFolder(_ folder: URL?) {
-        store = folder.map { DocumentStore(folder: $0) } ?? DocumentStore()
+    // Moves to a document in the new documents folder and tells the person where the earlier ones are.
+    private func switchStore(to new: DocumentStore) {
+        let old = store
+        store = new
+        guard !DocumentStore.sameFolder(old.folder, new.folder) else {   // the same folder chosen again
+            releaseUnusedFolders()
+            return sendFiles()
+        }
+        openFirstDocument()
         releaseUnusedFolders()
         sendFiles()
+        if new.isAppFolder {   // so the folder left was a chosen one
+            notify("Now using the Typewrencher folder. Your documents in \u{201c}\(old.folderLabel)\u{201d} are still there.")
+        } else {
+            let earlier = old.isAppFolder ? "the Typewrencher folder in Files" : "\u{201c}\(old.folderLabel)\u{201d}"
+            notify("Now using \u{201c}\(new.folderLabel)\u{201d}. Your earlier documents are still in \(earlier).")
+        }
+    }
+
+    // The document to show in a folder just switched to: the one open there last, else the newest .txt, else a new
+    // untitled file. A file that cannot be read is skipped (openNow says why), up to five of them.
+    private func openFirstDocument() {
+        var candidates: [URL] = []
+        if let last = store.lastFile { candidates.append(last) }
+        for file in store.textFiles() {
+            let url = store.folder.appendingPathComponent(file.name)
+            if !candidates.contains(url) { candidates.append(url) }
+        }
+        for url in candidates.prefix(5) where openNow(url) { return }
+        createUntitledDocument()
     }
 
     // Remembers a folder access was started for. A folder already held is not held twice: the extra start is ended.
