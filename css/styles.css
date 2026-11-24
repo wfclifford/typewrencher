@@ -120,6 +120,9 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
 .files-note { margin: 0; padding: 0.85rem; color: var(--muted); font-size: 0.9rem; }
 .files-grant { margin: 0 0.85rem 0.85rem; align-self: flex-start; padding: 0.35rem 0.75rem; }
 .files-list { list-style: none; margin: 0; padding: 0.35rem; overflow: auto; flex: 1; min-height: 0; }
+/* Quick taps on neighboring rows read as iOS's double-tap zoom; this turns that gesture off here (pinch zoom still works).
+   The list scrolls, so it needs the rule as well as the panel around it. */
+.files-panel, .files-list { touch-action: manipulation; }
 .files-list .file {
   display: grid; grid-template-columns: 1rem 1fr auto; align-items: center; gap: 0.5rem; width: 100%;
   padding: 0.45rem 0.55rem; border: 0; border-radius: 5px; background: transparent; color: var(--ink);
@@ -132,11 +135,13 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
 }
 .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-when { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
-.files-list .file:hover { background: color-mix(in srgb, var(--count) 12%, transparent); }
+@media (hover: hover) { .files-list .file:hover { background: color-mix(in srgb, var(--count) 12%, transparent); } } /* before the current-file rule below, which wins */
 .files-list .file:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .files-list .file[aria-current="true"], .files-list .file[aria-current="true"] .file-when { background: var(--count); color: var(--bg); font-weight: 600; cursor: default; }
 .files-list .file[aria-current="true"]::before { opacity: 1; }
-/* Each row's trash button sits over the date; it shows on hover or keyboard focus and is always a Tab stop. */
+/* Each row's trash button sits over the date; it shows on hover or keyboard focus and is always a Tab stop. Hover styles
+   apply only where a pointer can hover: on a touch screen iOS spends the first tap on a :hover that reveals something, so
+   every row needed two taps to open. */
 .files-list li { position: relative; }
 .file-trash {
   position: absolute; right: 0.55rem; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 0.3rem;
@@ -148,9 +153,13 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6'/%3E%3C/svg%3E") center / contain no-repeat;
           mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.files-list li:hover .file-trash, .files-list li:has(:focus-visible) .file-trash { opacity: 1; }
-.files-list li:hover .file-when, .files-list li:has(:focus-visible) .file-when { visibility: hidden; }
-.file-trash:hover { border-color: currentColor; }
+.files-list li:has(:focus-visible) .file-trash { opacity: 1; }
+.files-list li:has(:focus-visible) .file-when { visibility: hidden; }
+@media (hover: hover) {
+  .files-list li:hover .file-trash { opacity: 1; }
+  .files-list li:hover .file-when { visibility: hidden; }
+  .file-trash:hover { border-color: currentColor; }
+}
 .file-trash:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .files-list li:has(.file[aria-current="true"]) .file-trash { color: var(--bg); }
 .files-list li.armed .file-trash { opacity: 1; color: #fff; background: #e00000; border-color: #e00000; font-weight: 600; }
