@@ -2318,3 +2318,8 @@ test('Files drawer rows: every :hover style is inside @media (hover: hover), so 
   assert.match(css, /\.files-list li:has\(:focus-visible\) \.file-trash \{ opacity: 1; \}/);
   assert.ok(css.indexOf('.files-list .file:hover') < css.indexOf('.files-list .file[aria-current="true"],'), 'the current-file rule comes after the hover tint');
 });
+test('Files drawer: double-tap zoom is off in the panel and its scrolling list, pinch zoom is not', () => {
+  const css = read('css/styles.css');
+  assert.match(css, /\.files-panel, \.files-list \{ touch-action: manipulation; \}/);
+  assert.doesNotMatch(css, /\.files-(panel|list)[^{]*\{[^}]*touch-action: (none|pan-)/, 'nothing disables pinch zoom or scrolling');
+});

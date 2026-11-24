@@ -120,6 +120,9 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
 .files-note { margin: 0; padding: 0.85rem; color: var(--muted); font-size: 0.9rem; }
 .files-grant { margin: 0 0.85rem 0.85rem; align-self: flex-start; padding: 0.35rem 0.75rem; }
 .files-list { list-style: none; margin: 0; padding: 0.35rem; overflow: auto; flex: 1; min-height: 0; }
+/* Quick taps on neighboring rows read as iOS's double-tap zoom; this turns that gesture off here (pinch zoom still works).
+   The list scrolls, so it needs the rule as well as the panel around it. */
+.files-panel, .files-list { touch-action: manipulation; }
 .files-list .file {
   display: grid; grid-template-columns: 1rem 1fr auto; align-items: center; gap: 0.5rem; width: 100%;
   padding: 0.45rem 0.55rem; border: 0; border-radius: 5px; background: transparent; color: var(--ink);
