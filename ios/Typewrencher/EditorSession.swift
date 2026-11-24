@@ -311,7 +311,8 @@ final class EditorSession {
         guard launched, filesOpen, let web, let file = fileURL else { return }
         let files = store.textFiles().map { ["name": $0.name, "modified": ($0.modified.timeIntervalSince1970 * 1000).rounded()] as [String: Any] }
         let state: [String: Any] = ["access": "granted", "folder": store.folderLabel, "path": store.displayPath,
-                                    "current": file.lastPathComponent, "files": files]
+                                    "current": file.lastPathComponent, "files": files,
+                                    "trash": false]   // this app has no Trash for its files: the page draws no trash buttons
         guard let json = try? JSONSerialization.data(withJSONObject: state), let js = String(data: json, encoding: .utf8) else { return }
         web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.setFiles && window.TypewrencherHost.setFiles(\(js))")
     }

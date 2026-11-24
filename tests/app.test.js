@@ -2323,3 +2323,18 @@ test('Files drawer: double-tap zoom is off in the panel and its scrolling list, 
   assert.match(css, /\.files-panel, \.files-list \{ touch-action: manipulation; \}/);
   assert.doesNotMatch(css, /\.files-(panel|list)[^{]*\{[^}]*touch-action: (none|pan-)/, 'nothing disables pinch zoom or scrolling');
 });
+test('setFiles trash: false (the iPhone and iPad app) draws no trash buttons; left out or true keeps them (the Mac app)', () => {
+  const files = [{name: 'a.txt', modified: 1}, {name: 'My Poem.txt', modified: 1}];
+  const draw = extra => { const b = bootHost(), n = b.nodes; b.host().setFiles({access: 'granted', folder: 'F', current: 'a.txt', files, ...extra}); return n.filesList.children; };
+  for (const rows of [draw({}), draw({trash: true})]) { assert.equal(rows.length, 2); for (const li of rows) assert.equal(li.children.length, 2, 'file button and trash button'); }
+  const none = draw({trash: false});
+  assert.equal(none.length, 2, 'the rows are still listed');
+  for (const li of none) { assert.equal(li.children.length, 1, 'only the file button'); assert.equal(li.children[0].className, 'file'); assert.equal(li.children[0].children.length, 2, 'name and date stay'); }
+  assert.match(read('js/host.js'), /setFiles\(\{ access, folder, path, current, files: \[\{ name, modified \}\], trash \}\)/, 'documented in the host.js header');
+});
+test('Files drawer: the date is hidden on hover or focus only for a row that has a trash button', () => {
+  const css = read('css/styles.css');
+  assert.match(css, /\.files-list li:has\(\.file-trash\):has\(:focus-visible\) \.file-when \{ visibility: hidden; \}/);
+  assert.match(css, /\.files-list li:has\(\.file-trash\):hover \.file-when \{ visibility: hidden; \}/);
+  assert.doesNotMatch(css, /\.files-list li:hover \.file-when|\.files-list li:has\(:focus-visible\) \.file-when/, 'no unscoped rule that would hide a date with nothing to replace it');
+});

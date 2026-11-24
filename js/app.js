@@ -618,6 +618,7 @@
     filesList.textContent = "";
     armedKept = false;
     var now = new Date();
+    // A host that cannot move files to a Trash (the iPhone and iPad app) says trash: false, and no row gets the button.
     files.forEach(function (f) {
       var name = String(f.name), item = document.createElement("li"), btn = document.createElement("button");
       var label = document.createElement("span"), when = document.createElement("span");
@@ -630,7 +631,7 @@
         host.flush(); // the document being left is saved with its newest text
         host.post({ type: "openFile", name: name });
       });
-      btn.appendChild(label); btn.appendChild(when); item.appendChild(btn); item.appendChild(trashButton(name, item)); filesList.appendChild(item);
+      btn.appendChild(label); btn.appendChild(when); item.appendChild(btn); if (state.trash !== false) item.appendChild(trashButton(name, item)); filesList.appendChild(item);
     });
     if (armedRow && !armedKept) disarmTrash(); // the armed file is gone from the list
   }

@@ -291,4 +291,12 @@ Seen in the simulator (file contents read from the app's container):
 
 Not run: a failure that is not "deleted" (a full disk, a read-only file); a very large document; the iPad. Switching documents, New, rename, the drawer and export are still to come (steps 3 and 4).
 
+## Follow-up: no trash button on iOS
 
+Status: built, tests pass (249), checked in the iPhone 17 simulator. **Not run on the iPhone 14 Pro, the iPad, or the Mac app** (the Mac must keep its trash buttons).
+
+Decision (owner, from the start of the iOS work): no trash button on iOS; files are deleted in the Files app. How the page learns this: an optional field on `setFiles`, `trash`. `false` hides the per-row trash buttons; left out or `true`, they show. This is additive to bridge protocol 1: documented in the `js/host.js` header; the iOS `EditorSession.sendFiles` sends `trash: false`; the Mac sends nothing, so it is unchanged (its Swift handler needed no edit). Tests cover both cases. The date that the trash button replaces on hover or focus is now hidden only for rows that have a trash button.
+
+Seen in the simulator (accessibility tree of the open drawer): 3 rows (X, Alpha, Bravo) and 0 "Move … to the Trash" buttons; before this change each row had one.
+
+Found but not changed: the root element gets `data-host="mac"` for any host, including the iOS app (it only selects which icons Open and Export show), so the name is misleading on iOS. Renaming it would touch CSS, JS and tests; left alone.
