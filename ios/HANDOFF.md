@@ -69,6 +69,26 @@ Built on branch `ios-phase-1`. Xcode 27.2 (27B52), simulators iOS 27.2 (iPhone 1
 3. **Header overflow in narrow windows.** Besides the clipped Name field on iPhone, Slide Over (about 320 CSS px) overlaps the Name field with the Export button. **Name field width on a phone.** At 402 pt the field is clipped to about two characters. Possibly acceptable once a name is shown elsewhere, but the owner should look at it on the smallest iPhone (check 1.9).
 4. **Page background before the page paints.** The web view is white until the page loads; with the dark default this is a white flash on launch. A native background colour would fix it, but the page's tone is not known to Swift, so I left it.
 
+### Summary of check results
+
+| Check | Result |
+| --- | --- |
+| 1.1 | Pass (simulator; also runs on both devices) |
+| 1.2 | Pass, iPhone and iPad (owner) |
+| 1.3 | iPad pass; iPhone portrait: caret pass, header unreachable with the keyboard open; iPhone landscape: owner finds too little room (not a measured fail) |
+| 1.4 | Pass, iPhone and iPad (owner) |
+| 1.5 | Pass, iPhone and iPad (owner; size names not recorded) |
+| 1.6 | Pass, iPad (owner) |
+| 1.7 | Pass for typing and paste; document switching not run (stubbed) |
+| 1.8 | Pass on the iPad Pro 10.5-inch after adding an explicit Info.plist; no second window possible |
+| 1.9 | iPhone 14 Pro only: name field too small, nothing else wrong |
+| 1.10 | Portrait 834, landscape 1112, half split about 551 (control absent, as the 800 px rule says); one third and two thirds not offered on this iPad; Slide Over about 320 shows a header overflow (Name field covered by Export) |
+| 1.11 | Pass, iPhone portrait and iPad (owner); iPhone landscape not run |
+| 1.12 | Pass, iPhone (owner) |
+| 1.13 | Drawer floats: pass; no trash button seen (empty list, proves nothing); caret not returned after closing: fail |
+
+Xcode 27.2 (27B52). iPhone 14 Pro, iOS 27.2. iPad Pro 10.5-inch, iPadOS 17.7.11. Simulators iOS 27.2.
+
 ### Owner's results on the iPhone 14 Pro (iOS 27.2, Debug build run from Xcode, reported by the owner)
 
 I could not open the owner's screenshots (macOS refused the read), so these are the owner's words, not my observations.
@@ -104,7 +124,7 @@ Widths are my readings of three screenshots the owner supplied (screenshot pixel
 - **1.13 drawer on a phone (owner, iPhone 14 Pro; two screenshots I read): partial.**
   - Pass: the drawer opens and floats over the left of the text (it covers part of the text; the text does not reflow).
   - No trash buttons appear. The drawer is empty because the stub sends no files, so this says nothing about what the page will do once files are listed (see finding 2).
-  - Not reported: whether closing the drawer returns the caret to the text. Not run.
+  - **Fail: closing the drawer does not return the caret.** The owner closed the keyboard, opened and closed the drawer, and had to tap the text again to bring the keyboard back. Note the keyboard was already closed before the drawer was opened, so this shows the drawer does not refocus the text, not that it loses a caret the keyboard still held. Whether the page is meant to refocus (it may rely on the Mac or desktop focus behavior) was not checked; a web change would be needed, none made.
   - With the keyboard open, the header, including the files drawer button, has scrolled out of view (screenshot), and the owner has to close the keyboard to reach it. The system's form-accessory bar (up, down and check buttons) shows above the keyboard and takes space; whether it can be hidden natively, or whether this layout is the page's intent, was not tried.
 - **1.9 phone layout (owner, iPhone 14 Pro, the only iPhone the owner has): the name field is too small, nothing else is wrong.** The other header buttons and the drawer fit. The owner proposes moving the Open and + buttons into the files drawer to make room for the name field. That is a web change and was not made; it would also change the header order the Mac app and `mac/HANDOFF.md` rely on, so it would need to be iOS-only or decided for all platforms.
 - **Not run on the iPad:** 1.13 and the Slide Over Page width control; anything not listed above.
