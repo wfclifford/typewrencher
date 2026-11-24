@@ -317,10 +317,12 @@ Scope (2b):
 - **Web change (a separate pull request, a site release):** `setFiles` gets an optional `chooseFolder: true` (the iOS app sends it; the Mac and browsers do not), which draws a "Choose folder" button at the bottom of the drawer; clicking it posts `{ type: 'chooseFolder' }`. Documented in the `js/host.js` header, tested, and the Mac rechecked (no button there). Do not touch js/, css/, index.html, sw.js or tools/ in the native pull request.
 - **Not in 2b:** reloading when a file changes from outside, coordinated reads and writes (`NSFileCoordinator`), and iCloud files that are not downloaded: that is 2c. No claim about iCloud Drive is made until 2c has run; picking a folder that happens to be in iCloud Drive is allowed, and anything odd that is seen is recorded, not fixed here.
 
-Assumptions to confirm (change them in the pull request if wrong):
-1. After choosing a folder, files left in the app folder stay there and are not listed.
-2. The picker returns a folder only; there is no "remember several folders" list.
+Assumptions, **confirmed by the owner on 2026-11-24**:
+1. After choosing a folder, files left in the app folder stay there and are not listed. They are reachable in the Files app, with Open, or by choosing the app's own folder again. Two details go with this: after a folder switch the app shows an inline notice (about 12 seconds, no web change): "Now using <folder>. Your earlier documents are still in the Typewrencher folder in Files."; and the app's memory of which empty `untitled` files it created becomes **per folder** (today it is by name only, which is safe with one folder but could delete an empty `untitled.txt` the person made themselves in the chosen folder).
+2. One chosen folder at a time, plus the app folder as the default. There is no recent-folders list; to change folder, choose again (the picker usually reopens where it was). A recent-folders list can be a later follow-up. Open has no recents either.
 3. Bookmarks are created without `.withSecurityScope` (iOS), and access is started when the folder is chosen or reopened and kept for as long as it is the documents folder.
+
+Build order (owner, 2026-11-24): (1) the web change for the button, as its own pull request; (2) the folder picker and bookmark storage; (3) switching, remembering and the fallback; (4) Open.
 
 Run these checks (simulator where possible; the owner runs the device ones and sends results back):
 2b.1 The "Choose folder" button shows in the iOS app's drawer and does not show on the Mac or in a browser (Mac recheck).
@@ -331,7 +333,8 @@ Run these checks (simulator where possible; the owner runs the device ones and s
 2b.6 Removing or moving the chosen folder in the Files app, then relaunching: the app falls back to its own folder with an inline message, no crash, no lost text.
 2b.7 Open picks a single `.txt` from elsewhere; it opens, edits save in place or fail inline, never silently.
 2b.8 Cancelling either picker changes nothing and shows nothing.
-2b.9 Choosing the app's own folder in the picker goes back to the app folder; its files are all still there.
+2b.9 Choosing the app's own folder in the picker goes back to the app folder; its files are all still there. After any folder switch the inline notice names the new folder and says where the earlier documents are.
+2b.9b An empty `untitled.txt` that the person made themselves in the chosen folder is never deleted by the app (untitled files are remembered per folder).
 2b.10 No alert, sheet or toast other than the two system pickers and the share sheet.
 2b.11 A folder chosen in iCloud Drive: record what is seen (no claims).
 
