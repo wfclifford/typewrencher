@@ -11,7 +11,8 @@ final class EditorSession {
     weak var web: WKWebView?
     private var store: DocumentStore
     private var held: [URL] = []       // folders access has been started for; kept while they are the documents folder or hold the open file
-    private var picker: FolderPicker?   // held while the folder picker is showing (its delegate is weak)
+    private var picker: NSObject?       // the folder or file picker, held while it is showing (its delegate is weak)
+    private var fileAccess: URL?        // a file picked with Open, whose own access is kept while it is the open file
     private var launchNotice: String?   // said once the page is ready: the chosen folder could not be reached
     private var launched = false
     private var filesOpen = false
@@ -119,6 +120,7 @@ final class EditorSession {
         savedText = newText
         if createdUntitled { store.setUntitled(url, true) }
         if let old { store.removeIfEmptyUntitled(old) }
+        releaseFileAccessIfLeft()
         releaseUnusedFolders()
         if saveFailure != nil { saveFailure = nil; notify("") }   // the failing file was left; its notice no longer applies
         // Typing the page has not yet handed over belongs to the file just left, until the page shows this one.
@@ -313,6 +315,41 @@ final class EditorSession {
         var top = scene?.keyWindow?.rootViewController
         while let presented = top?.presentedViewController { top = presented }
         return top
+    }
+
+    // MARK: Opening a file from anywhere
+
+    // The page's Open button (bridge message "open"): show the system file picker for one .txt. The file opens and saves
+    // where it is, in turn with other operations like any switch. Backing out changes nothing and says nothing.
+    func chooseFile() {
+        guard picker == nil, let top = Self.topViewController() else { return }
+        let chooser = FilePicker { [weak self] file in
+            self?.picker = nil
+            if let file { self?.openPicked(file) }
+        }
+        picker = chooser
+        chooser.present(on: top)
+    }
+
+    private func openPicked(_ file: URL) {
+        let started = file.startAccessingSecurityScopedResource()
+        perform { finished in
+            self.currentText { _ in
+                if self.openNow(file) {
+                    self.fileAccess = started ? file : nil   // kept for as long as this is the open file
+                } else if started {
+                    file.stopAccessingSecurityScopedResource()
+                }
+                finished()
+            }
+        }
+    }
+
+    // Ends the access given for a file picked with Open once another file is the open one.
+    private func releaseFileAccessIfLeft() {
+        guard let access = fileAccess, access.standardizedFileURL != fileURL?.standardizedFileURL else { return }
+        access.stopAccessingSecurityScopedResource()
+        fileAccess = nil
     }
 
     // MARK: Choosing the documents folder

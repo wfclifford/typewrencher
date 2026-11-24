@@ -66,3 +66,22 @@ final class FolderPicker: NSObject, UIDocumentPickerDelegate {
 
     func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { done(nil) }
 }
+
+// Shows the system file picker for one plain-text file, opened in place (not copied), and reports it, or nil if the person
+// backed out. The file's security scope is started by the caller.
+final class FilePicker: NSObject, UIDocumentPickerDelegate {
+    private let done: (URL?) -> Void
+
+    init(done: @escaping (URL?) -> Void) { self.done = done }
+
+    func present(on top: UIViewController) {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.plainText], asCopy: false)
+        picker.delegate = self
+        picker.allowsMultipleSelection = false
+        top.present(picker, animated: true)
+    }
+
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) { done(urls.first) }
+
+    func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { done(nil) }
+}
