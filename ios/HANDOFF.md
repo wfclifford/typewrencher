@@ -274,7 +274,11 @@ Seen in the simulator:
 
 **Unexplained, to watch for (iPad simulator, once).** In my first iPad-simulator run the Debug trace showed `ready` twice before the first `textChanged`, and of "hello from the iPad" only "e iPad" ended up in the page and the file (a page that loads twice shows the native copy of the text again, which would lose what was typed before the second load). I could not make it happen again: in three further launches there was one `makeUIView` and one `ready`, and typing was saved whole. The first run had no timestamps. The Debug trace now timestamps every line and logs `makeUIView`, so the next occurrence can be explained. Possible causes not ruled out: SwiftUI rebuilding the web view; my simulated taps and typing landing on the wrong element (the loss in that run could also be input that went to the Settings button). If the owner ever sees typed text vanish on the iPad, this is the first thing to look at.
 
-Not run yet after step 4: everything on a device for steps 4 and the iPad; Save to Files; the failed-export path.
+**Owner's results for step 4 on the iPhone 14 Pro and the iPad Pro 10.5-inch: "all tests pass".** The owner was asked to export with Save to Files and open the saved file (text and name right), to close the sheet without choosing (nothing appears), and to repeat on the iPad (popover looks right). The answer did not itemize each one, so it is recorded as the owner's summary. No typed text vanished on the iPad (the unexplained double load above was not seen again).
+
+Not run: the failed-export path; sharing to something other than Files; the Mac app (unaffected).
+
+**Phase 2a status.** Steps 1 to 4 are built and have passed on the iPhone and the iPad. Checks: 2a.1 pass, 2a.2 pass, 2a.3 pass, 2a.4 simulator pass (New, blank page, empty untitled removed), 2a.5 pass (rename, taken name refused; the inline text of the refusal not seen), 2a.6 pass, 2a.7 pass, 2a.8 pass (simulator), 2a.9 pass (simulator, and the owner saw nothing else). Still to do for the whole of phase 1 and 2: the web change to hide the trash button on iOS and fix Mac-only wording; 2b (a chosen folder) and 2c (outside changes, iCloud).
 
 **Step 2: autosave (built; simulator, and the force-quit check on the iPhone 14 Pro).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. **Otherwise not run on the iPhone; not run on the iPad.**
 
