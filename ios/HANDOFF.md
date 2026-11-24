@@ -183,7 +183,7 @@ Status: built, tests pass (243). Rendered at 320 and 402 CSS px in desktop Chrom
 
 ## Follow-up: the caret after the files drawer closes (1.13)
 
-Status: built, tests pass (245), seen on the iPhone 17 simulator. **Not run on the iPhone 14 Pro, the iPad, or the Mac app.**
+Status: built, tests pass (245), seen on the iPhone 17 simulator, and confirmed by the owner on an iPhone (pass). **Not run on the iPad or the Mac app.**
 
 **Problem (owner, iPhone).** Tapping the files drawer button took focus off the text, and closing the drawer did not give it back: the owner had to tap the text to bring the keyboard back.
 
