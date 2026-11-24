@@ -4,6 +4,40 @@ This file is how the planning chat and the coding session pass work to each othe
 
 How to use it: pull `main`, read the task below, do it on a branch, then fill in Results in the same branch and open a pull request. Do not merge it.
 
+## Recheck: web changes #43, #47, #48, #49 in the Mac app
+
+Checked on the Mac (macOS 27.2) in a Debug build run from Xcode, `main` at 588628b, site copy rebuilt with `node tools/build-site.js mac/Typewrencher/site`. `node tools/stamp.js --check` is current and `node tests/app.test.js` passes (245). No code was changed: no check failed. I drove the real window with CGEvent clicks and screenshots, in a scratch folder `~/Developer/tw-check`. Window 1512×949 pt, then 480×700 and 1400×860 pt. The first launch showed a macOS "differs from previously opened versions" prompt; the owner chose Open Anyway.
+
+**a. Name field (#47), narrowest window.** Pass. The window cannot be made narrower than 480 pt (asked for 300, got 480). At 480×700 the header is one row: files drawer, Open, +, Name field, Export (label "Export"), Settings.
+
+**b. Export button (#48).**
+- Success: after saving a copy through the save panel the button read "Done" in a capture 0.5 s later and "Export" again in a capture 3.7 s later. The 2.5 s was not timed more closely than that.
+- Empty text: Export with an empty document shows no panel (the page says "Nothing to save yet." on the status line; I did not look at the status line then).
+- Cancel: pressing Escape in the save panel closed it, the button stayed "Export", and no file was written.
+- "Couldn't save": **not run.** I found no safe way to make a save fail.
+- Under 360 px: not applicable on the Mac (minimum width 480 pt).
+
+**c. Files drawer caret (#49).**
+- Mouse: with the drawer open, clicking the drawer button closed it and the caret was in the text (seen in one capture; the caret blinks).
+- Keyboard (Tab to the button, Space, focus stays on the button): **not run, inconclusive.** Tab and Shift-Tab moved focus between the editor and the Name field, but the header buttons show no visible focus ring in the e-ink theme at screenshot size, so I could not tell where focus was and never saw it on the drawer button. This still needs a person at the keyboard.
+
+**d. Name field select on focus (#43).** Pass for the selection: in a new untitled document, clicking the Name field selected "untitled" (and Tab into the field on an existing document selected "Sonnet"). Typing to replace it was not run.
+
+**e. Rhymes and page width, Lock Rhymes height on and off.**
+- Lock on (it was on, left over from the earlier task): typing the made-up word `zzqxv` kept the Rhymes panel at its full height (about 176 pt, the same as with rhymes listed) and "No pronunciation found for “zzqxv”." showed inside it.
+- Lock off: the same word shrank the panel to its title and the message row, and the editor grew into the space. I turned the lock back on afterwards.
+- "Lock Rhymes height" sits under "Show rhymes" and its help line and above "Include near rhymes".
+- Page width: Narrow narrows the page and the header, editor, gutter count, Rhymes panel and footer follow it; the count stays on its line. With Settings open, Standard and Wide look the same because the text area is already narrower than both. With Settings closed at 1400 pt, Standard is centered with margins. Wide with Settings closed, wrapping off, other themes, and the persistence after relaunch were not run this time.
+
+**f. Header order, drawer, status line.** The header order is unchanged (files drawer, Open, +, Name, Export, Settings) at 480 pt and at 1400 pt. The drawer (folder name, file count, rows, path) and the status line (counts, estimated and variable, dictionary state) were seen once each and showed the expected content. I did not compare them with an older build, so "unchanged" is confirmed only for the header order.
+
+**Not run:** keyboard half of c, "Couldn't save", typing over the selected name, Wide with Settings closed, VoiceOver, other themes, persistence after relaunch.
+
+**Notes.**
+- Clicking in the text while Settings is open closes the Settings drawer; not checked against earlier behavior.
+- Typing a path (with `/` or `~`) into the save panel's name field opens the panel's "Go to the folder" field and can produce a file name with colons; that was my input, not the app.
+- The scratch folder now has an `untitled.txt` with test text; nothing in the repo besides this file changed.
+
 ## Task: move files to the Trash from the files drawer, with Undo
 
 Status: decided by the owner; the interaction was mocked up and approved. Nothing is built yet. Mac app only. Browsers have no files drawer and must behave exactly as before.
