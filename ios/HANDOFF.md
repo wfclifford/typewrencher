@@ -151,7 +151,7 @@ Status: fix built and checked in the simulator, and confirmed by the owner on th
 
 ## Follow-up: Name field on phones
 
-Status: built, tests pass, checked in the iPhone 17 simulator only. **Not run on the iPhone 14 Pro**, the iPad, or in a desktop or Mac window.
+Status: merged (#47). Built, tests pass, checked in the iPhone 17 simulator, and verified on an iPhone by the owner. Not run: the iPad, or in a desktop or Mac window.
 
 **Cause.** Two things. The header left the Name field about 32 pt of a 402 pt screen. And its font was 0.9rem (about 14.4 px): iOS zooms into any field under 16 px when it gets focus, which is the "screen zooms in" the owner saw (in the simulator it also showed as the page shifted left and the editor behind the keyboard).
 
@@ -160,3 +160,15 @@ Status: built, tests pass, checked in the iPhone 17 simulator only. **Not run on
 **Seen in the simulator (iPhone 17, iOS 27.2).** Row 1: files, Open, +, Export, Settings. Row 2: "Name" and a field about 370 pt wide. Tapping the field opened the keyboard with no zoom, no sideways shift, and the editor and footer in place.
 
 **Not run, and a known risk.** Narrower than 402 pt, for example Slide Over at about 320 CSS px: row 1 needs about 291 pt of the 288 available, so Settings (and the field row below it) will probably wrap onto another row. That is no longer an overlap, but it is untested and unsightly. Also not run: the iPad, landscape, a desktop browser at 480 to 600 px, and the Mac app.
+
+## Follow-up: Slide Over header (very narrow windows)
+
+Status: built, tests pass (243). Rendered at 320 and 402 CSS px in desktop Chrome through an iframe, with a stand-in for the app bridge. **Not run in iPad Slide Over itself, on the iPad, the iPhone, or the Mac app.**
+
+**Problem.** At about 320 px the buttons row needed about 291 pt of 288 available, so Settings wrapped to another row.
+
+**Change (web, a site release).** Under 360 px the idle Export label is hidden (`#save:not(.flashing) #saveLabel { display: none; }`) and the button keeps a 44 px minimum width and its accessible name ("Export a copy as .txt", or "Save as .txt" in a browser). `js/app.js`: `flash()` adds a `flashing` class to the button while "Done" or "Couldn't save" shows and removes it after 2.5 s, so the feedback stays visible. In a browser the idle ".txt" label is hidden the same way under 360 px, so a very narrow browser window is affected too.
+
+**Seen at 320 px (desktop Chrome, not an iPad).** Files, Open, + on the left, an icon-only Export and Settings on the right, all on one row; the Name row sits below. At 402 px the row is unchanged: "Export" is shown. The dictionary dialog covered the Name row in the capture (the scratch page has no dictionary files).
+
+**Not run, known risk.** "Couldn't save" is longer than "Export", so for 2.5 s at 320 px the label could push Settings to a second row. Not tried. The "Done" label should fit (it is shorter than "Export"); not tried either.

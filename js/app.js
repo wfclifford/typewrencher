@@ -117,10 +117,11 @@
   // The button shows the short label; the status line and the button's accessible name carry the detail, such as "Done title.txt".
   function flash(label, detail) {
     saveLabel.textContent = label;
+    saveBtn.classList.add("flashing"); // narrow screens hide the idle label (css/styles.css) but show this one
     say(detail || label);
     saveBtn.setAttribute("aria-label", detail || label);
     clearTimeout(resetTimer);
-    resetTimer = setTimeout(function () { saveLabel.textContent = saveIdleLabel; saveBtn.setAttribute("aria-label", saveIdleName); }, 2500);
+    resetTimer = setTimeout(function () { saveLabel.textContent = saveIdleLabel; saveBtn.classList.remove("flashing"); saveBtn.setAttribute("aria-label", saveIdleName); }, 2500);
   }
   function fileName() {
     var n = fname.value.replace(/[\u0000-\u001f\\\/:*?"<>|]/g, "").replace(/\.txt$/i, "").replace(/^[\s.]+|[\s.]+$/g, "");
