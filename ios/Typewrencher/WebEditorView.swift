@@ -2,8 +2,8 @@ import SwiftUI
 import WebKit
 import os
 
-// Hosts the web view that runs the page, which is the editor. Phase 1: the bridge answers "ready"
-// and stubs every other message; files are not part of this phase. Bridge protocol 1 is unchanged.
+// Hosts the web view that runs the page, which is the editor. The bridge hands "ready" to the EditorSession
+// (phase 2a, step 1: show the last document) and still stubs every other message. Bridge protocol 1 is unchanged.
 struct WebEditorView: UIViewRepresentable {
     func makeCoordinator() -> Bridge { Bridge() }
 
@@ -22,6 +22,7 @@ struct WebEditorView: UIViewRepresentable {
         web.isInspectable = true   // Safari > Develop > the device or simulator
         #endif
         web.navigationDelegate = context.coordinator
+        context.coordinator.session.web = web
         web.load(URLRequest(url: SiteSchemeHandler.startURL))
         return web
     }
@@ -48,6 +49,7 @@ struct WebEditorView: UIViewRepresentable {
     // The native end of the bridge (js/host.js). Answers "ready"; every other message is a stub.
     final class Bridge: NSObject, WKScriptMessageHandlerWithReply, WKScriptMessageHandler, WKNavigationDelegate {
         private let log = Logger(subsystem: "Typewrencher", category: "bridge")
+        let session = EditorSession()
 
         // Debug builds also append every line to a file in the app's tmp folder, so a simulator run can be
         // read with `simctl get_app_container ... data` without Web Inspector.
@@ -76,8 +78,11 @@ struct WebEditorView: UIViewRepresentable {
             case "export":
                 // Not stubbed as success: the page would show "Done" for a file that was never written.
                 replyHandler(nil, "not available yet")
+            case "ready":
+                session.pageReady()
+                replyHandler(nil, nil)
             default:
-                replyHandler(nil, nil)   // ready and all other messages
+                replyHandler(nil, nil)   // every other message is still a stub (phase 2a, later steps)
             }
         }
 

@@ -225,4 +225,21 @@ Run these checks (simulator where possible; the owner runs the device ones and s
 
 Results to record, each as pass, fail or not run, with the exact error or what was seen, the device and iOS version; the Xcode version; any web change that would be needed, listed but not made.
 
-Results: (empty until run)
+Results: see "2a progress" below (filled in as each step is built).
+
+### 2a progress (branch `ios-phase-2a`, in order)
+
+**Step 1: reopen the last document at launch, or start `untitled.txt` (built; simulator only).** Xcode 27.2, iPhone 17 simulator, iOS 27.2, Debug build. Not run on the iPhone 14 Pro or the iPad.
+
+Built: `DocumentStore.swift` (the app's Documents folder; remembers only the last file's name, because the container path changes between installs; creates `untitled.txt`, `untitled 2.txt`, ...), `TextFile.swift` (UTF-8 read), `EditorSession.swift` (on the bridge's `ready`: reopen the last document or start a new one, then `setDocument`; a second `ready` after a page reload shows the open document again; inline `notify` messages; clears the web view's undo history when a new file is shown). `Info.plist` gains `UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace` so the Documents folder shows in the Files app. All other bridge messages are still stubs.
+
+Seen in the simulator (read from the app's container with `simctl`, and from screenshots):
+- 2a.1 part: a fresh install's first launch created an empty `untitled.txt` in the app's Documents folder. **Not run: that it shows in the Files app** (needs a device or the Files app on the simulator); the two plist keys are in the built `Info.plist`.
+- A relaunch reused `untitled.txt` (no `untitled 2.txt`).
+- A file containing "Roses are red,\nviolets are blue" was shown after relaunch, with the name "untitled" and 2 lines, 6 words, 9 syllables.
+- 2a.8: a file with invalid UTF-8 bytes was left byte-for-byte unchanged, the app opened a new `untitled N.txt`, and the page showed "Typewrencher couldn't open untitled 3: it is not UTF-8 text." under the counts. (A first version overwrote that reason with a second "couldn't reopen" message; fixed.)
+
+Known, not fixed yet: every launch where the last file cannot be read leaves another empty `untitled N.txt` behind, and an empty untitled file is never cleaned up. That belongs to 2a.4 (decide in Results whether an empty untitled file is removed when left, as on the Mac, or kept).
+
+Not run yet: autosave (2a.2), switching and undo (2a.3), New (2a.4), rename (2a.5), the Files-app refresh (2a.6), export (2a.7), the alerts check (2a.9).
+
