@@ -172,3 +172,5 @@ Status: built, tests pass (243). Rendered at 320 and 402 CSS px in desktop Chrom
 **Seen at 320 px (desktop Chrome, not an iPad).** Files, Open, + on the left, an icon-only Export and Settings on the right, all on one row; the Name row sits below. At 402 px the row is unchanged: "Export" is shown. The dictionary dialog covered the Name row in the capture (the scratch page has no dictionary files).
 
 **Not run, known risk.** "Couldn't save" is longer than "Export", so for 2.5 s at 320 px the label could push Settings to a second row. Not tried. The "Done" label should fit (it is shorter than "Export"); not tried either.
+
+**Owner's result on the iPad (Slide Over).** "Couldn't save" appears and the row holds (owner: "corrected and passes"). "Done" never shows because the iOS bridge replies "not available yet" to every export until the files phase wires it up, so **"Done" at this width is not run**, not failed. The owner's wording did not say whether the idle row (all five buttons on one line, icon-only Export) was checked, so it is not recorded as seen on the iPad.
