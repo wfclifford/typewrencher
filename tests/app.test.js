@@ -2060,7 +2060,8 @@ test('trash: markup (a bar at the top of the drawer, labelled buttons), styles, 
   const html = read('index.html'), css = read('css/styles.css');
   assert.ok(html.indexOf('id="filesPanel"') < html.indexOf('id="trashBar"') && html.indexOf('id="trashBar"') < html.indexOf('id="filesFolder"'), 'the bar sits at the top of the drawer, so the text area does not move');
   assert.match(html, /<div id="trashBar" class="strip-bar trash-bar" role="group" aria-label="Moved to the Trash" hidden>/);
-  assert.match(css, /\.files-list li:hover \.file-trash, \.files-list li:has\(:focus-visible\) \.file-trash \{ opacity: 1; \}/);
+  assert.match(css, /\.files-list li:has\(:focus-visible\) \.file-trash \{ opacity: 1; \}/, 'keyboard focus shows the trash button');
+  assert.match(css, /@media \(hover: hover\) \{\s*\.files-list li:hover \.file-trash \{ opacity: 1; \}/, 'hover shows it only where a pointer can hover');
   assert.match(css, /\.files-list li\.armed \.file \{ padding-right:/, 'an armed row shortens the name');
   assert.match(css, /\.file-trash:focus-visible \{ outline:/);
   const w = boot(); // a browser: no files drawer, no bridge, no trash
@@ -2303,4 +2304,17 @@ test('Files drawer: closing it with a pointer returns the caret to the text; ope
   n.filesBtn.emit('click', {detail: 1}); n.filesBtn.focus();                 // open, put focus on the button
   n.filesBtn.emit('click', {detail: 0});                                     // close from the keyboard (Space or Enter)
   assert.equal(n.filesPanel.hidden, true); assert.equal(focused(), n.filesBtn, 'a keyboard user keeps focus on the button');
+});
+test('Files drawer rows: every :hover style is inside @media (hover: hover), so a touch screen opens a file with one tap', () => {
+  const css = read('css/styles.css'), lines = css.split('\n');
+  const hoverLines = lines.map((l, i) => [l, i]).filter(([l]) => /\.files-list[^{]*:hover|\.file-trash:hover/.test(l));
+  assert.ok(hoverLines.length >= 4, 'the row, trash and date hover rules are still there');
+  for (const [line, i] of hoverLines) {
+    const inline = /@media \(hover: hover\)/.test(line);
+    const before = lines.slice(0, i).reverse().find(l => /^@media|^\}/.test(l));   // the nearest block start or end above
+    assert.ok(inline || /^@media \(hover: hover\) \{$/.test(before || ''), 'not inside a hover media query: ' + line.trim());
+  }
+  // The keyboard-focus versions stay unconditional, and the current row still beats the hover tint.
+  assert.match(css, /\.files-list li:has\(:focus-visible\) \.file-trash \{ opacity: 1; \}/);
+  assert.ok(css.indexOf('.files-list .file:hover') < css.indexOf('.files-list .file[aria-current="true"],'), 'the current-file rule comes after the hover tint');
 });
