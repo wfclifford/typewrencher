@@ -403,3 +403,46 @@ Not run, step 4 (2b.7): backing out of the file picker; the in-place write fallb
 **Phase 2b status.** All four steps and the two fixes found on the way are built and have passed on the iPhone 14 Pro and the iPad, with the Mac recheck. Checks: 2b.1 pass (iPhone, iPad, Mac), 2b.2 pass, 2b.3 pass, 2b.4 pass, 2b.5 passed in the simulator and was exercised on devices (switching and renaming inside a chosen folder were not separately itemized by the owner), 2b.6 pass (deleted and Recently Deleted), 2b.7 pass, 2b.8 pass (the folder picker in the simulator; the file picker's cancel was not itemized), 2b.9 pass, 2b.9b pass in the simulator, 2b.10 nothing but the system pickers and the share sheet was seen, 2b.11 not run. **Not run or not claimed:** iCloud Drive folders; choosing the same folder twice; a save failing during a folder switch; opening the same file twice; a file opened with Open is not reopened at the next launch (a known limit); the unplugged-drive case.
 
 **Owner's report on iCloud Drive folders (2b.11): "iCloud Drive folders work fine."** Recorded as given: the owner chose folders in iCloud Drive and they worked. The answer did not say on which device, what was tried (choosing, listing, creating, editing, relaunching, deleting), or what the drawer's path line showed (the "iCloud Drive/…" label in `DocumentStore.displayPath` is a guess from the path and has not been seen by me). **No claim is made about iCloud beyond that:** syncing between devices, files that are not downloaded yet, changes made on another device, and coordinated reads and writes are all phase 2c and have not been looked at.
+
+## Task: iOS phase 2c, changes from outside and iCloud files
+
+Status: a proposal for the owner to correct before any code is written. Nothing built yet. Browsers and the Mac app must not change. Phase 2b is merged and confirmed on the iPhone, the iPad and the Mac.
+
+**What the Mac does (the reference):** it watches the open file and ignores the app's own saves; when another app changes the file it reloads it, unless the person has typed since the last save, in which case their text is kept and the notice line says "Typewrencher kept your changes; the file was also changed elsewhere."; a file moved or deleted outside gets a sticky notice. **What the iOS app does today:** nothing watches the open file; reads and writes are plain (uncoordinated) and happen on the main thread; the drawer's list refreshes when the app returns to the foreground, when the drawer opens, and after the app's own operations; a file or folder that is gone is noticed at the next save or the next return to the foreground (2b). The owner reports that folders in iCloud Drive "work fine" (2b.11); nothing beyond that is known about iCloud.
+
+Decisions already made (do not reopen): documents are plain UTF-8 `.txt` files; no alerts, sheets or toasts (feedback is inline, on the notice line); free Apple account; no TestFlight; no claims about iCloud beyond what has been seen.
+
+Scope (2c):
+1. **Coordinated reads and writes.** Every read and write of a document, and the listing of a folder, goes through `NSFileCoordinator` (reads without changes, writes as a replacement), so another process, including iCloud, never sees a half-written file and the app never reads one. Saves stay atomic. File access moves **off the main thread**: a coordinated read of an iCloud file that is not on the device waits for the download, and that must never freeze the page. This changes `openNow`, `saveNow` and the listing from synchronous to asynchronous; the one-operation-at-a-time queue stays.
+2. **Watching the open file** with an `NSFilePresenter` (added through `NSFileCoordinator`). A change from another app follows the Mac's rule above: reload unless the person typed since the last save; the app's own saves are recognized (the new text equals what was just saved) and ignored; undo history is cleared when the text is replaced. A move or deletion of the open file is treated like a lost folder in 2b (sticky message, nothing written into Recently Deleted, unsaved text kept as a new file in the app's folder).
+3. **iCloud files that are not downloaded.** The not-downloaded state is detected with the file's `ubiquitousItemDownloadingStatus`. Opening such a file starts the download and shows "Downloading <name>…" on the notice line, then opens it when it arrives (about 30 seconds at most; typing in the page stays responsive meanwhile). On failure (offline, timeout) the notice says so and the current document stays open and unchanged. Whether such files appear in the drawer at all depends on how iOS lists them: first observe, on a device, what the listing returns for a folder with files that are not downloaded, then decide (recorded in Results before it is built).
+4. **Live drawer list (optional).** While the drawer is open and the app is in the foreground, a presenter on the documents folder refreshes the list when files appear, vanish or are renamed outside; the foreground refresh stays the baseline. If notifications do not arrive for a chosen folder (not every provider sends them), the baseline is what it is, and Results say so.
+5. **Carry-over from 2b, small:** choosing the same folder twice, a save failing during a folder switch (the switch must not happen), opening the same file twice, and reopening at launch a file opened with Open (needs a bookmark for the file; the app comes back to the documents folder today).
+
+Not in 2c: resolving iCloud conflict versions (`NSFileVersion`; the plan is only to record whether conflict copies appear), any sync-status display, merging text, web changes (the notice line already carries every message), and any Mac change.
+
+Assumptions to confirm (change them in the pull request if wrong):
+1. Outside changes follow the Mac's policy exactly (reload unless typed since the last save; otherwise keep the person's text and say so; never merge).
+2. No conflict-version UI: if iCloud makes a conflict copy it is just another file in the drawer.
+3. Opening a not-downloaded file waits for the download with an inline message and a 30-second limit, rather than failing at once.
+4. The live drawer refresh is a nice-to-have, built last, and dropped if it proves unreliable.
+5. File access moves off the main thread even for local files, so there is one code path.
+
+How it can be tested: the simulator has no iCloud account, so everything involving iCloud, and any edit "from another app", needs a device and usually a second device or the Mac editing the same file in iCloud Drive; the owner runs those and sends results back. In the simulator an outside change can be made by editing a file on disk, which exercises the watching, the reload rule and the unsaved-text rule.
+
+Run these checks:
+2c.1 A file changed by another app (or edited on disk in the simulator) while it is open with no unsaved typing: the page shows the new text, the caret and scroll do not jump more than the replacement forces, undo does not bring back the old text.
+2c.2 The same with unsaved typing: the person's text is kept, the notice says so, nothing is lost either way.
+2c.3 The app's own saves cause no reload, flicker or lost caret (typing continuously for a minute).
+2c.4 The open file moved or deleted outside: the message appears at once (not only at the next save), typing is kept, and nothing is written into Recently Deleted.
+2c.5 iCloud Drive: a file edited on the Mac (or another device) shows on the iPhone and the iPad; record exactly what happens and how long it takes. No claim beyond what is seen.
+2c.6 A file that is not downloaded: opening it shows "Downloading…", then opens; offline, the failure shows inline and the current document is unchanged.
+2c.7 The page never freezes while a file is read, written or downloaded (type during a slow open).
+2c.8 Saving while another device writes the same iCloud file: record what happens (loss, a conflict copy, nothing).
+2c.9 The drawer list shows files added, removed or renamed outside, live if built, otherwise on the next foreground.
+2c.10 The carry-over items in scope item 5.
+2c.11 No alert, sheet or toast other than the system pickers and the share sheet.
+
+Results to record, each as pass, fail or not run, with the exact error or what was seen, the device and iOS version; the Xcode version; any web change that would be needed, listed but not made.
+
+Results: (empty until run)
