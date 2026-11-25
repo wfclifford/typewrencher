@@ -4,6 +4,14 @@ This file is how the planning chat and the coding session pass work to each othe
 
 How to use it: pull `main`, read the task below, do it on a branch, then fill in Results in the same branch and open a pull request. Do not merge it.
 
+## Recheck: no "Choose folder" button on the Mac after `setFiles` gained `chooseFolder` (#61, #62)
+
+Checked by the owner on the Mac (Debug build run from Xcode, site copy built from the iOS 2b branch's web files, Clean Build Folder first). I did not run the Mac app for this one; this is the owner's report, recorded as given. The Mac sends no `chooseFolder`, so its drawer should be unchanged.
+
+- Open the files drawer: there is no "Choose folder" button at the bottom. **Pass.**
+- Hover a row: the trash icon still shows; the date, path line and count look as before. **Pass.**
+- The owner's summary was "1 and 2 pass".
+
 ## Recheck: trash buttons still show on the Mac after `setFiles` gained `trash` (#59)
 
 Checked by the owner on the Mac (Debug build run from Xcode, site copy built from the `hide-trash-on-ios` branch, Clean Build Folder first). I did not run the Mac app for this one; this is the owner's report, recorded as given. The Mac sends no `trash` field, so its drawer should be unchanged.
