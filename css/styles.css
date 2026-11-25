@@ -392,12 +392,15 @@ html:not([data-host="mac"]) .icon-app, html[data-host="mac"] .icon-web { display
   #hl mark { background: color-mix(in srgb, var(--count) 18%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--count) 45%, transparent); }
 }
 :root:is([data-tone="hc-bw"], [data-tone="terminal"], [data-tone="amber"], [data-tone="hc-yellow"], [data-tone="eink"]) #hl mark {
-  /* An outline and a thick underline, not a fill: a solid inverted cell is the block cursor's look (see .bc below). */
-  background: transparent; border-radius: 0; padding: 0; margin: 0;
-  box-shadow: inset 0 0 0 1px var(--ink), inset 0 -3px 0 var(--ink);
+  /* A thick underline with upturned ends, drawn with background gradients, not a fill or a box-shadow: a solid inverted cell is the
+     block cursor's look (see .bc below), and e-ink removes every box-shadow (!important). No padding or margin, so the text keeps
+     lining up with the text box. */
+  background:
+    linear-gradient(var(--ink), var(--ink)) 0 100% / 100% 3px no-repeat,
+    linear-gradient(var(--ink), var(--ink)) 0 100% / 3px 8px no-repeat,
+    linear-gradient(var(--ink), var(--ink)) 100% 100% / 3px 8px no-repeat;
+  border-radius: 0; padding: 0; margin: 0; box-shadow: none;
 }
-/* E-ink removes every box-shadow (!important), so its mark is a soft shade like the Grey, Warm and Cool tones, not a line. */
-:root[data-tone="eink"] #hl mark { background: color-mix(in srgb, var(--ink) 20%, transparent); border-radius: 4px; padding: 0 2px; margin: 0 -2px; }
 .tog, .seg { min-height: 2rem; }
 .tog, .seg button { min-width: 1.75rem; }
 .ico { justify-content: center; }
