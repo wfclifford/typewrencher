@@ -220,7 +220,7 @@ final class EditorSession {
         if let old = leaving {
             // Typed into the file just left, before the page showed the new one: it belongs there, unless that file
             // is gone, which a late write must not bring back.
-            if FileManager.default.fileExists(atPath: old.path) { try? TextFile.write(newText, to: old) }
+            if FileManager.default.fileExists(atPath: old.path), !ChosenFolder.isInTrash(old) { try? TextFile.write(newText, to: old) }
             return
         }
         text = newText
@@ -242,7 +242,10 @@ final class EditorSession {
         saveWork?.cancel(); saveWork = nil
         guard let url = fileURL, text != savedText else { return true }
         do {
-            guard FileManager.default.fileExists(atPath: url.path) else { throw MovedOrDeleted() }
+            // A file the person deleted in the Files app is moved to Recently Deleted and the URL we hold can follow it there;
+            // new text must not be written into the trash, where it would be emptied away in about 30 days. It stays unsaved,
+            // on the page, and is kept as a new file in the app's folder when the app notices (leaveFolderIfLost).
+            guard FileManager.default.fileExists(atPath: url.path), !ChosenFolder.isInTrash(url) else { throw MovedOrDeleted() }
             try TextFile.write(text, to: url)
             savedText = text
             if saveFailure != nil {

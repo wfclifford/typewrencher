@@ -30,7 +30,13 @@ enum ChosenFolder {
         var isFolder: ObjCBool = false
         guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isFolder), isFolder.boolValue,
               (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) != nil else { return false }
-        return !folder.standardizedFileURL.pathComponents.contains { $0 == ".Trash" || $0 == "Recently Deleted" }
+        return !isInTrash(folder)
+    }
+
+    // Anything at or under a ".Trash" or "Recently Deleted" folder. A file or folder the person deleted in the Files app is
+    // moved there, and the URL the app already holds can follow it, so writing "as usual" would put new text into the trash.
+    static func isInTrash(_ url: URL) -> Bool {
+        url.standardizedFileURL.pathComponents.contains { $0 == ".Trash" || $0 == "Recently Deleted" }
     }
 
     // The remembered folder with access started (the caller stops it when the folder is no longer used), or nil when none
