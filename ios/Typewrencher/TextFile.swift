@@ -12,8 +12,21 @@ enum TextFile {
         return text
     }
 
-    // A new file swapped into place, so a crash or a full disk never leaves half a document.
+    // A new file swapped into place, so a crash or a full disk never leaves half a document. A file the person opened
+    // with the file picker may be writable while its folder is not (access to the file alone), which the swap needs; then
+    // the file is rewritten in place instead, as the Mac app does.
     static func write(_ text: String, to url: URL) throws {
-        try Data(text.utf8).write(to: url, options: .atomic)
+        let data = Data(text.utf8)
+        do {
+            try data.write(to: url, options: .atomic)
+            return
+        } catch let error as CocoaError where error.code == .fileWriteNoPermission {
+            // fall through to the in-place write
+        }
+        let handle = try FileHandle(forWritingTo: url)
+        defer { try? handle.close() }
+        try handle.truncate(atOffset: 0)
+        try handle.write(contentsOf: data)
+        try handle.synchronize()
     }
 }

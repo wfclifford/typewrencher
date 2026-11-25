@@ -9,7 +9,11 @@ final class EditorSession {
     static let shared = EditorSession()
 
     weak var web: WKWebView?
-    private let store = DocumentStore()
+    private var store: DocumentStore
+    private var held: [URL] = []       // folders access has been started for; kept while they are the documents folder or hold the open file
+    private var picker: NSObject?       // the folder or file picker, held while it is showing (its delegate is weak)
+    private var fileAccess: URL?        // a file picked with Open, whose own access is kept while it is the open file
+    private var launchNotice: String?   // said once the page is ready: the chosen folder could not be reached
     private var launched = false
     private var filesOpen = false
     private(set) var fileURL: URL?
@@ -24,6 +28,21 @@ final class EditorSession {
 
     private var name: String { fileURL.map { DocumentStore.displayName($0) } ?? "" }
 
+    // At launch the chosen folder, if one was remembered and can still be reached; otherwise the app's own folder.
+    init() {
+        if let folder = ChosenFolder.resolve() {
+            held = [folder]
+            store = DocumentStore(folder: folder)
+        } else {
+            store = DocumentStore()
+            if ChosenFolder.isRemembered {
+                // The bookmark is kept: an unavailable drive or a folder that is back later works again. Until then the
+                // app's own folder is used, and the person is told.
+                launchNotice = Self.lostNotice(ChosenFolder.rememberedName)
+            }
+        }
+    }
+
     // The page has started (bridge message "ready"). The first time, show the last document or a new one; if the
     // page reloads and says ready again, show the document that is already open.
     func pageReady() {
@@ -31,6 +50,7 @@ final class EditorSession {
         if !launched {
             launched = true
             launch()
+            if let notice = launchNotice { launchNotice = nil; notify(notice) }
         } else {
             push()
         }
@@ -100,6 +120,8 @@ final class EditorSession {
         savedText = newText
         if createdUntitled { store.setUntitled(url, true) }
         if let old { store.removeIfEmptyUntitled(old) }
+        releaseFileAccessIfLeft()
+        releaseUnusedFolders()
         if saveFailure != nil { saveFailure = nil; notify("") }   // the failing file was left; its notice no longer applies
         // Typing the page has not yet handed over belongs to the file just left, until the page shows this one.
         leaving = old
@@ -153,7 +175,7 @@ final class EditorSession {
         guard let url = fileURL else { return done(nil) }
         let clean = DocumentStore.cleanName(raw)
         guard !clean.isEmpty, clean != name else { push(); return done(nil) }   // nothing to rename
-        let target = store.folder.appendingPathComponent(clean + ".txt").standardizedFileURL
+        let target = url.deletingLastPathComponent().appendingPathComponent(clean + ".txt").standardizedFileURL   // the file's own folder
         let caseOnly = target.path.lowercased() == url.path.lowercased()   // "poem" to "Poem"
         if !caseOnly, FileManager.default.fileExists(atPath: target.path) {
             push()
@@ -198,7 +220,7 @@ final class EditorSession {
         if let old = leaving {
             // Typed into the file just left, before the page showed the new one: it belongs there, unless that file
             // is gone, which a late write must not bring back.
-            if FileManager.default.fileExists(atPath: old.path) { try? TextFile.write(newText, to: old) }
+            if FileManager.default.fileExists(atPath: old.path), !ChosenFolder.isInTrash(old) { try? TextFile.write(newText, to: old) }
             return
         }
         text = newText
@@ -220,7 +242,10 @@ final class EditorSession {
         saveWork?.cancel(); saveWork = nil
         guard let url = fileURL, text != savedText else { return true }
         do {
-            guard FileManager.default.fileExists(atPath: url.path) else { throw MovedOrDeleted() }
+            // A file the person deleted in the Files app is moved to Recently Deleted and the URL we hold can follow it there;
+            // new text must not be written into the trash, where it would be emptied away in about 30 days. It stays unsaved,
+            // on the page, and is kept as a new file in the app's folder when the app notices (leaveFolderIfLost).
+            guard FileManager.default.fileExists(atPath: url.path), !ChosenFolder.isInTrash(url) else { throw MovedOrDeleted() }
             try TextFile.write(text, to: url)
             savedText = text
             if saveFailure != nil {
@@ -295,6 +320,136 @@ final class EditorSession {
         return top
     }
 
+    // MARK: Opening a file from anywhere
+
+    // The page's Open button (bridge message "open"): show the system file picker for one .txt. The file opens and saves
+    // where it is, in turn with other operations like any switch. Backing out changes nothing and says nothing.
+    func chooseFile() {
+        guard picker == nil, let top = Self.topViewController() else { return }
+        let chooser = FilePicker { [weak self] file in
+            self?.picker = nil
+            if let file { self?.openPicked(file) }
+        }
+        picker = chooser
+        chooser.present(on: top)
+    }
+
+    private func openPicked(_ file: URL) {
+        let started = file.startAccessingSecurityScopedResource()
+        perform { finished in
+            self.currentText { _ in
+                if self.openNow(file) {
+                    self.fileAccess = started ? file : nil   // kept for as long as this is the open file
+                } else if started {
+                    file.stopAccessingSecurityScopedResource()
+                }
+                finished()
+            }
+        }
+    }
+
+    // Ends the access given for a file picked with Open once another file is the open one.
+    private func releaseFileAccessIfLeft() {
+        guard let access = fileAccess, access.standardizedFileURL != fileURL?.standardizedFileURL else { return }
+        access.stopAccessingSecurityScopedResource()
+        fileAccess = nil
+    }
+
+    // MARK: Choosing the documents folder
+
+    // The drawer's "Choose folder" button (bridge message "chooseFolder"): show the system folder picker. Backing out
+    // changes nothing and says nothing. Choosing the app's own folder goes back to the default.
+    func chooseFolder() {
+        guard picker == nil, let top = Self.topViewController() else { return }
+        let chooser = FolderPicker { [weak self] folder in
+            self?.picker = nil
+            if let folder { self?.folderChosen(folder) }
+        }
+        picker = chooser
+        chooser.present(on: top)
+    }
+
+    // The folder the picker returned becomes the documents folder, in turn with other operations: the open document is
+    // saved first (if that fails nothing changes), then the app moves to a document in the new folder and says so. Access
+    // to the folder the open document was in is kept until it is left.
+    private func folderChosen(_ folder: URL) {
+        let started = folder.startAccessingSecurityScopedResource()
+        let isAppFolder = DocumentStore.sameFolder(folder, DocumentStore.appFolder)
+        if !isAppFolder && !started {
+            return notify("Typewrencher couldn\u{2019}t get access to \(folder.lastPathComponent).")
+        }
+        let endAccess = { if started { folder.stopAccessingSecurityScopedResource() } }
+        perform { finished in
+            self.currentText { _ in
+                guard self.saveNow() else { endAccess(); return finished() }
+                if isAppFolder {
+                    ChosenFolder.clear()
+                    endAccess()
+                } else {
+                    do { try ChosenFolder.save(folder) } catch {
+                        endAccess()
+                        self.notify("Typewrencher couldn\u{2019}t remember \(folder.lastPathComponent): \(Self.reason(error)).")
+                        return finished()
+                    }
+                    self.hold(folder)
+                }
+                self.switchStore(to: isAppFolder ? DocumentStore() : DocumentStore(folder: folder))
+                finished()
+            }
+        }
+    }
+
+    // Moves to a document in the new documents folder and tells the person where the earlier ones are.
+    private func switchStore(to new: DocumentStore) {
+        let old = store
+        store = new
+        guard !DocumentStore.sameFolder(old.folder, new.folder) else {   // the same folder chosen again
+            releaseUnusedFolders()
+            return sendFiles()
+        }
+        openFirstDocument()
+        releaseUnusedFolders()
+        sendFiles()
+        if new.isAppFolder {   // so the folder left was a chosen one
+            notify("Now using the Typewrencher folder. Your documents in \u{201c}\(old.folderLabel)\u{201d} are still there.")
+        } else {
+            let earlier = old.isAppFolder ? "the Typewrencher folder in Files" : "\u{201c}\(old.folderLabel)\u{201d}"
+            notify("Now using \u{201c}\(new.folderLabel)\u{201d}. Your earlier documents are still in \(earlier).")
+        }
+    }
+
+    // The document to show in a folder just switched to: the one open there last, else the newest .txt, else a new
+    // untitled file. A file that cannot be read is skipped (openNow says why), up to five of them.
+    private func openFirstDocument() {
+        var candidates: [URL] = []
+        if let last = store.lastFile { candidates.append(last) }
+        for file in store.textFiles() {
+            let url = store.folder.appendingPathComponent(file.name)
+            if !candidates.contains(url) { candidates.append(url) }
+        }
+        for url in candidates.prefix(5) where openNow(url) { return }
+        createUntitledDocument()
+    }
+
+    // Remembers a folder access was started for. A folder already held is not held twice: the extra start is ended.
+    private func hold(_ folder: URL) {
+        if held.contains(where: { DocumentStore.sameFolder($0, folder) }) {
+            folder.stopAccessingSecurityScopedResource()
+        } else {
+            held.append(folder)
+        }
+    }
+
+    // Ends access to every held folder that is neither the documents folder nor the one the open file is in.
+    private func releaseUnusedFolders() {
+        let fileFolder = fileURL?.deletingLastPathComponent()
+        held.removeAll { folder in
+            let needed = DocumentStore.sameFolder(folder, store.folder) || (fileFolder.map { DocumentStore.sameFolder(folder, $0) } ?? false)
+            if !needed { folder.stopAccessingSecurityScopedResource() }
+            return !needed
+        }
+    }
+
     // MARK: The files drawer
 
     // The page's drawer opened or closed (bridge message "files"): while it is open, send the list.
@@ -304,15 +459,57 @@ final class EditorSession {
     }
 
     // The app came back to the foreground: files may have been added, moved or deleted in the Files app.
-    func refreshFiles() { sendFiles() }
+    // If the documents folder is gone (deleted, in Recently Deleted, an unplugged drive) the app moves to its own folder.
+    func refreshFiles() {
+        if !leaveFolderIfLost() { sendFiles() }
+    }
+
+    private static func lostNotice(_ name: String?) -> String {
+        let folder = name.map { "\u{201c}\($0)\u{201d}" } ?? "The folder you chose"
+        return "\(folder) was deleted or can\u{2019}t be reached, so Typewrencher is using its own folder. Choose a folder again to go back."
+    }
+
+    // True if the documents folder was lost and the app is moving to its own folder. The open document's text is never
+    // dropped: if it could not be saved (its file went with the folder), it is first kept as a file in the app's folder.
+    private func leaveFolderIfLost() -> Bool {
+        guard launched, !store.isAppFolder, !ChosenFolder.isReachable(store.folder) else { return false }
+        let lostName = store.folderLabel
+        perform { finished in
+            self.currentText { _ in
+                var kept: String?
+                if let url = self.fileURL, self.text != self.savedText {
+                    do {
+                        let copy = try DocumentStore().createFile(named: DocumentStore.displayName(url), text: self.text)
+                        self.savedText = self.text   // it is saved, in the new place
+                        kept = copy.deletingPathExtension().lastPathComponent
+                    } catch {
+                        // Not even that worked: stay where we are, the text is still on the page, and say so.
+                        self.notify("Typewrencher couldn\u{2019}t reach \u{201c}\(lostName)\u{201d}, and couldn\u{2019}t keep your text elsewhere: \(Self.reason(error)). Your text is still on the page; Export keeps a copy.", sticky: true)
+                        return finished()
+                    }
+                }
+                self.store = DocumentStore()   // the bookmark stays: a folder that comes back works again at the next launch
+                self.openFirstDocument()
+                self.releaseUnusedFolders()
+                self.sendFiles()
+                let note = Self.lostNotice(lostName)
+                self.notify(kept.map { note + " A copy of your latest text is in the Typewrencher folder as \u{201c}\($0)\u{201d}." } ?? note)
+                finished()
+            }
+        }
+        return true
+    }
 
     // Sends the page the .txt files in the Documents folder (TypewrencherHost.setFiles).
     private func sendFiles() {
         guard launched, filesOpen, let web, let file = fileURL else { return }
         let files = store.textFiles().map { ["name": $0.name, "modified": ($0.modified.timeIntervalSince1970 * 1000).rounded()] as [String: Any] }
+        // The open file is highlighted only if it is in the listed folder (a file in another folder may share a name).
+        let inListedFolder = DocumentStore.sameFolder(file.deletingLastPathComponent(), store.folder)
         let state: [String: Any] = ["access": "granted", "folder": store.folderLabel, "path": store.displayPath,
-                                    "current": file.lastPathComponent, "files": files,
-                                    "trash": false]   // this app has no Trash for its files: the page draws no trash buttons
+                                    "current": inListedFolder ? file.lastPathComponent : "", "files": files,
+                                    "trash": false,          // this app has no Trash for its files: the page draws no trash buttons
+                                    "chooseFolder": true]    // and it can show a folder picker: the page draws the Choose folder button
         guard let json = try? JSONSerialization.data(withJSONObject: state), let js = String(data: json, encoding: .utf8) else { return }
         web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.setFiles && window.TypewrencherHost.setFiles(\(js))")
     }
