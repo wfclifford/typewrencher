@@ -34,6 +34,10 @@ Changes under check (CSS only; no native Mac code changed): the drawer row, date
 
 Not run: a second Mac window size (the Mac window is a single window), other themes, VoiceOver.
 
+## Recheck: web changes up to #65 (owner's pass)
+
+On 2026-11-27, with `main` at f90fffe (merge of #65, which includes the rhyme mark underline #63 and the files drawer filling the row on narrow windows #65), the site copy was rebuilt with `node tools/build-site.js mac/Typewrencher/site` and the Mac app rebuilt and run from Xcode (no build errors; the copy's `css/` and `js/app.js` matched the repo). **The owner ran the Mac app tests and reports that all of them pass.** I did not run them myself, and the owner did not list which checks were run, so this records "all Mac app tests", not individual items. Nothing in the Swift code changed.
+
 ## Recheck: web changes #43, #47, #48, #49 in the Mac app
 
 Checked on the Mac (macOS 27.2) in a Debug build run from Xcode, `main` at 588628b, site copy rebuilt with `node tools/build-site.js mac/Typewrencher/site`. `node tools/stamp.js --check` is current and `node tests/app.test.js` passes (245). No code was changed: no check failed. I drove the real window with CGEvent clicks and screenshots, in a scratch folder `~/Developer/tw-check`. Window 1512×949 pt, then 480×700 and 1400×860 pt. The first launch showed a macOS "differs from previously opened versions" prompt; the owner chose Open Anyway.
