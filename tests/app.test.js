@@ -1784,7 +1784,7 @@ function bootHost(saved = {}, opts = {}) {
   const messages = [], listeners = {};
   const handler = {postMessage(m) { messages.push(m); return opts.reply ? opts.reply(m) : Promise.resolve(); }};
   const win = {addEventListener(type, f) { (listeners[type] ??= []).push(f); }, webkit: {messageHandlers: {typewrencher: handler}}};
-  const b = boot(saved, true, {...opts, globals: {window: win}});
+  const b = boot(saved, true, {...opts, globals: {...(opts.globals || {}), window: win}});
   return Object.assign(b, {messages, win, listeners, host: () => win.TypewrencherHost, types: () => messages.map(m => m.type)});
 }
 test('in a browser the host bridge is off: Open and Save stay visible and no global is added', () => {
@@ -1950,7 +1950,10 @@ test('About: the skull sentence describes the plus button inside the Mac app, an
 test('files drawer: a narrow row floats the drawer over the text instead of squeezing it', () => {
   const css = read('css/styles.css');
   assert.match(css, /\.work \{[^}]*container: work \/ inline-size;/);
-  assert.match(css, /@container work \(max-width: 44rem\) \{\s*\.files-panel \{ position: absolute;[^}]*left: 0;/);
+  assert.match(css, /@container work \(max-width: 44rem\) \{\s*\.files-panel \{ position: absolute;[^}]*inset: 0; width: auto;/, 'on a narrow row the drawer fills it');
+  assert.match(css, /@container work \(max-width: 44rem\) \{[^@]*\.files-head \.files-close \{ display: inline-flex; \}/, 'and shows its close button');
+  assert.ok(css.indexOf('.files-head .files-close { display: none;') > 0 && css.indexOf('.files-head .files-close { display: none;') < css.indexOf('@container work (max-width: 44rem)'), 'which is hidden when the drawer sits beside the text, declared before the narrow rule so that rule wins');
+  assert.match(css, /@media \(hover: none\) \{\s*\.file-trash \{ opacity: 1; min-width: var\(--hit\);/, 'on a touch screen the trash button is always shown, full size');
 });
 test('files drawer: a browser never shows the button or the drawer', () => {
   const n = boot().nodes;
@@ -1993,6 +1996,43 @@ test('files drawer: choosing another file sends unsent text, then asks to switch
   fileButtons(n)[0].click(); assert.deepEqual(b.types(), ['ready'], 'the open file');
   fileButtons(n)[1].click();
   assert.deepEqual(plain(b.messages.slice(1)), [{type: 'textChanged', text: 'fresh'}, {type: 'openFile', name: 'b.txt'}]);
+});
+const fullDrawer = {getComputedStyle: () => ({position: 'absolute', fontSize: '16px', lineHeight: '30px', paddingLeft: '16px', paddingRight: '16px'})};
+const twoFiles = {access: 'granted', folder: 'F', current: 'a.txt', files: [{name: 'a.txt', modified: 1}, {name: 'b.txt', modified: 1}]};
+test('files drawer, narrow row: opening it covers the text (out of the Tab order) and moves focus to Close; closing restores both', () => {
+  const store = {}, b = bootHost(store, {globals: fullDrawer}), n = b.nodes;
+  assert.equal(n.sheet.getAttribute('inert'), null);
+  n.filesBtn.click();
+  assert.equal(n.filesPanel.hidden, false); assert.equal(n.sheet.getAttribute('inert'), '', 'the text behind the drawer is inert');
+  assert.equal(b.document.activeElement, n.filesClose, 'focus moves into the drawer');
+  n.filesClose.emit('click', {detail: 1});
+  assert.equal(n.filesPanel.hidden, true); assert.equal(n.sheet.getAttribute('inert'), null); assert.equal(store['syl-files'], 'off', 'Close is the Files button toggled');
+  assert.equal(b.document.activeElement, n.ed, 'a finger or mouse puts the caret back in the text');
+});
+test('files drawer, narrow row: Escape closes it and focus goes back to the Files button', () => {
+  const b = bootHost({}, {globals: fullDrawer}), n = b.nodes; let prevented = false;
+  n.filesBtn.click();
+  n.filesPanel.emit('keydown', {key: 'Escape', preventDefault() { prevented = true; }});
+  assert.equal(n.filesPanel.hidden, true); assert.ok(prevented); assert.equal(b.document.activeElement, n.filesBtn);
+});
+test('files drawer, narrow row: choosing a file asks to switch and closes the drawer without changing the remembered choice; the open file just closes it', () => {
+  const store = {'syl-files': 'on'}, b = bootHost(store, {globals: fullDrawer}), n = b.nodes;
+  assert.notEqual(n.filesPanel.hidden, false, 'a remembered open drawer stays closed at launch, because it would cover the text');
+  assert.equal(store['syl-files'], 'on');
+  n.filesBtn.click(); n.filesBtn.click(); assert.equal(store['syl-files'], 'off', 'the Files button remembers as before'); n.filesBtn.click(); assert.equal(store['syl-files'], 'on');
+  b.host().setFiles(twoFiles);
+  fileButtons(n)[1].click();
+  assert.equal(n.filesPanel.hidden, true); assert.equal(n.sheet.getAttribute('inert'), null);
+  assert.deepEqual(plain(b.messages.slice(-2)), [{type: 'openFile', name: 'b.txt'}, {type: 'files', open: false}], 'the switch is asked for first, then the drawer closes'); assert.equal(store['syl-files'], 'on', 'picking a file leaves the remembered choice alone');
+  n.filesBtn.click(); const before = b.messages.length;
+  fileButtons(n)[0].emit('click', {detail: 0});
+  assert.equal(n.filesPanel.hidden, true, 'the open file closes the drawer'); assert.equal(b.messages.slice(before).some(m => m.type === 'openFile'), false);
+  assert.equal(b.document.activeElement, n.filesBtn, 'a keyboard user lands back on the Files button');
+});
+test('files drawer, wide row: picking a file leaves the drawer open, the text stays usable and the remembered drawer opens at launch', () => {
+  const b = bootHost({'syl-files': 'on'}), n = b.nodes;
+  assert.equal(n.filesPanel.hidden, false); b.host().setFiles(twoFiles);
+  fileButtons(n)[1].click(); assert.equal(n.filesPanel.hidden, false); assert.equal(n.sheet.getAttribute('inert'), null);
 });
 test('files drawer: without folder access it offers to ask; an untitled document says to save first', () => {
   const b = bootHost(), n = b.nodes;

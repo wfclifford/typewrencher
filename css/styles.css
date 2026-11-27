@@ -161,6 +161,12 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
   .files-list li:has(.file-trash):hover .file-when { visibility: hidden; }
   .file-trash:hover { border-color: currentColor; }
 }
+/* Touch only: there is no hover or keyboard focus to reveal the trash button, so it is always there, with a full-size target
+   and the date beside it. (Declared before the armed rules below, which must win.) */
+@media (hover: none) {
+  .file-trash { opacity: 1; min-width: var(--hit); min-height: var(--hit); justify-content: center; right: 0; }
+  .files-list li:has(.file-trash) .file { padding-right: var(--hit); }
+}
 .file-trash:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .files-list li:has(.file[aria-current="true"]) .file-trash { color: var(--bg); }
 .files-list li.armed .file-trash { opacity: 1; color: #fff; background: #e00000; border-color: #e00000; font-weight: 600; }
@@ -172,10 +178,14 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
 .files-panel .trash-bar .tog { padding: 0.2rem 0.6rem; }
 .files-path { margin: 0; padding: 0.6rem 0.85rem; border-top: 1px solid var(--edge); color: var(--muted); font-size: 0.8rem; overflow-wrap: anywhere; }
 .files-path:empty { display: none; }
-/* When the row is too narrow for the drawer and a usable text area side by side (a small window, or
-   Settings docked beside it), the drawer floats over the text's left edge instead of squeezing it. */
+.files-head .files-close { display: none; flex: none; } /* shown only when the drawer fills the row (next rule); it is the way out on a touch screen */
+/* When the row is too narrow for the drawer and a usable text area side by side (a phone, a small window, or
+   Settings docked beside it), the drawer fills the row, like Settings does on a phone, instead of squeezing the text. */
 @container work (max-width: 44rem) {
-  .files-panel { position: absolute; z-index: 3; top: 0; bottom: 0; left: 0; width: min(15rem, 85%); box-shadow: 8px 0 24px rgba(0, 0, 0, .35); }
+  .files-panel { position: absolute; z-index: 3; inset: 0; width: auto; box-shadow: none; }
+  .files-head { align-items: center; }
+  .files-head .files-close { display: inline-flex; }
+  .files-list .file { min-height: var(--hit); }
 }
 #save {
   font: 600 0.9rem/1.2 var(--sans); color: var(--count); background: var(--count-bg);

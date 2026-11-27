@@ -16,7 +16,7 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/styles.css?v=685a15cb42">
+<link rel="stylesheet" href="css/styles.css?v=cb574aae00">
 </head>
 <body>
 <main class="app">
@@ -44,20 +44,20 @@
     <button id="stripNo" type="button" class="tog">Keep</button>
   </div>
 
-  <div class="work">
+  <div class="work" id="work">
     <aside id="filesPanel" class="files-panel" aria-labelledby="filesFolder" hidden>
       <div id="trashBar" class="strip-bar trash-bar" role="group" aria-label="Moved to the Trash" hidden>
         <span id="trashMsg"></span>
         <button id="trashDismiss" type="button" class="tog">Dismiss</button>
       </div>
-      <div class="files-head"><h2 id="filesFolder" class="files-folder">Files</h2><span id="filesCount" class="files-count"></span></div>
+      <div class="files-head"><h2 id="filesFolder" class="files-folder">Files</h2><span id="filesCount" class="files-count"></span><button id="filesClose" type="button" class="info files-close" aria-label="Close files"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
       <p id="filesNote" class="files-note" hidden></p>
       <button id="filesGrant" type="button" class="tog files-grant" hidden>Allow access</button>
       <ul id="filesList" class="files-list"></ul>
       <p id="filesPath" class="files-path"></p>
       <button id="filesChoose" type="button" class="tog files-choose" hidden>Choose folder</button>
     </aside>
-    <div class="sheet">
+    <div class="sheet" id="sheet">
       <div id="measure" aria-hidden="true"></div>
       <div id="gutter"><div id="counts" role="list" aria-label="Syllables per line"></div></div>
       <textarea id="ed" name="syllable-text" class="wrap" wrap="soft" autocomplete="off" data-1p-ignore data-lpignore="true" data-form-type="other" spellcheck="true" aria-label="Text to count"
@@ -287,7 +287,7 @@
 </dialog>
 
 <script defer src="js/license.js?v=874a19f480"></script>
-<script defer src="js/version.js?v=8c2dfa2fd7"></script>
+<script defer src="js/version.js?v=d7bf314247"></script>
 <script defer src="js/preferences.js?v=72ac359a94"></script>
 <script defer src="js/counter.js?v=676091b79e"></script>
 <script defer src="js/rhymes.js?v=923679a75b"></script>
@@ -297,6 +297,6 @@
 <script defer src="js/host.js?v=2a6b59fc84"></script>
 <script defer src="js/editor.js?v=4c55868d9a"></script>
 <script defer src="js/dialogs.js?v=6e6803ddbf"></script>
-<script defer src="js/app.js?v=ec9d8d301c"></script>
+<script defer src="js/app.js?v=1b9e4369e5"></script>
 </body>
 </html>

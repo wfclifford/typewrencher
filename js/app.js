@@ -530,12 +530,31 @@
   var filesNote = document.getElementById("filesNote"), filesGrant = document.getElementById("filesGrant"), filesChoose = document.getElementById("filesChoose");
   var filesList = document.getElementById("filesList"), filesPath = document.getElementById("filesPath");
   var filesOpen = false;
+  var filesClose = document.getElementById("filesClose"), sheetEl = document.getElementById("sheet"), workEl = document.getElementById("work");
+  // On a narrow row (a phone, a small window, Settings docked beside the text) the CSS makes the drawer fill the row. The page asks
+  // the stylesheet, not a number, so the breakpoint lives in one place (the @container rule in css/styles.css).
+  function filesFull() {
+    if (typeof getComputedStyle !== "function") return false;
+    try { return getComputedStyle(filesPanel).position === "absolute"; } catch (_) { return false; }
+  }
+  // While the drawer covers the text, the text is out of the Tab order and hidden from screen readers.
+  function syncFilesFull() {
+    if (filesOpen && filesFull()) sheetEl.setAttribute("inert", ""); else sheetEl.removeAttribute("inert");
+  }
   function setFilesOpen(open, persist) {
     filesOpen = open;
     filesPanel.hidden = !open;
     filesBtn.setAttribute("aria-pressed", String(open));
     if (persist) store("syl-files", open ? "on" : "off");
+    syncFilesFull();
+    if (open && filesFull()) filesClose.focus({ preventScroll: true });
     host.post({ type: "files", open: open });
+  }
+  // Choosing a file in a full-size drawer closes it, so the text is back in view. This does not change the remembered
+  // open or closed choice, which belongs to the wide layout. A keyboard user's focus goes back to the Files button.
+  function closeFilesFull(e) {
+    setFilesOpen(false, false);
+    if (e && e.detail === 0) filesBtn.focus();
   }
   // "9:39 PM" today, "Yesterday", "Nov 18" this year, "Nov 18, 2025" before that.
   function fileWhen(ms, now) {
@@ -627,10 +646,11 @@
       label.className = "file-name"; label.textContent = name.replace(/\.txt$/i, "");
       when.className = "file-when"; when.textContent = typeof f.modified === "number" ? fileWhen(f.modified, now) : "";
       if (name === state.current) btn.setAttribute("aria-current", "true");
-      btn.addEventListener("click", function () {
-        if (name === state.current) return;
+      btn.addEventListener("click", function (e) {
+        if (name === state.current) { if (filesFull()) closeFilesFull(e); return; }
         host.flush(); // the document being left is saved with its newest text
         host.post({ type: "openFile", name: name });
+        if (filesFull()) closeFilesFull(e);
       });
       btn.appendChild(label); btn.appendChild(when); item.appendChild(btn); if (state.trash !== false) item.appendChild(trashButton(name, item)); filesList.appendChild(item);
     });
@@ -650,6 +670,15 @@
       // on an iPhone or iPad). A keyboard user (click detail 0) keeps focus on the button they pressed.
       if (!open && e && e.detail > 0) ed.focus();
     });
+    filesClose.addEventListener("click", function (e) {
+      setFilesOpen(false, true);
+      if (e && e.detail > 0) ed.focus(); else filesBtn.focus();
+    });
+    filesPanel.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && filesFull()) { e.preventDefault(); setFilesOpen(false, true); filesBtn.focus(); }
+    });
+    window.addEventListener("resize", syncFilesFull);
+    if (typeof ResizeObserver === "function") new ResizeObserver(syncFilesFull).observe(workEl); // Settings docking narrows the row without resizing the window
     filesGrant.addEventListener("click", function () { host.post({ type: "grantFolder" }); });
     filesChoose.addEventListener("click", function () { host.post({ type: "chooseFolder" }); });
   }
@@ -704,7 +733,7 @@
     ed.addEventListener("blur", host.flush);
     window.addEventListener("pagehide", host.flush);
     host.post({ type: "ready", protocol: host.protocol });
-    if (load("syl-files") === "on") setFilesOpen(true, false);
+    if (load("syl-files") === "on" && !filesFull()) setFilesOpen(true, false); // a full-size drawer would cover the text at launch
   }
 
   const useDictionary = document.getElementById('useCMUdict');
