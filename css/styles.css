@@ -187,6 +187,24 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
   .files-head .files-close { display: inline-flex; }
   .files-list .file { min-height: var(--hit); }
 }
+/* iPhone and iPad app only (the page sets data-files="sheet" when the host offers the folder picker): the drawer is a
+   full-screen sheet over the whole page, sliding in from the left the way Settings slides in from the right. The page moves
+   the panel out of .work, which contains layout and would confine a fixed panel to the text row; that also takes it out of
+   the @container rule above, so what that rule gives a narrow row is repeated here. */
+html[data-files="sheet"] .files-panel {
+  position: fixed; z-index: 5; inset: 0; width: auto; height: 100vh; height: 100dvh; border: 0; border-radius: 0; box-shadow: none;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+html[data-files="sheet"] .files-head { align-items: center; }
+html[data-files="sheet"] .files-head .files-close { display: inline-flex; }
+html[data-files="sheet"] .files-list .file { min-height: var(--hit); }
+/* Slide in from the left (entry only; closing is instant, as with Settings). */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-files="sheet"] .files-panel { transition: transform .22s ease; }
+  @starting-style {
+    html[data-files="sheet"] .files-panel { transform: translateX(-100%); }
+  }
+}
 #save {
   font: 600 0.9rem/1.2 var(--sans); color: var(--count); background: var(--count-bg);
   border: 1px solid var(--edge); border-radius: 6px; padding: 0.45rem 0.85rem; cursor: pointer;

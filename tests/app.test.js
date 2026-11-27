@@ -1975,6 +1975,36 @@ test('files drawer: a remembered open drawer opens after ready, and Reset to def
   n.resetPrefs.click();
   assert.equal(n.filesPanel.hidden, true); assert.deepEqual(plain(b.messages.at(-1)), {type: 'files', open: false});
 });
+test('files drawer: in the iPhone and iPad app it is a full-screen sheet that slides in from the left', () => {
+  const css = read('css/styles.css');
+  assert.match(css, /html\[data-files="sheet"\] \.files-panel \{\s*position: fixed; z-index: 5; inset: 0; width: auto; height: 100vh; height: 100dvh;/, 'fixed over the whole viewport');
+  assert.match(css, /html\[data-files="sheet"\] \.files-panel \{[^}]*padding: env\(safe-area-inset-top, 0px\) env\(safe-area-inset-right, 0px\) env\(safe-area-inset-bottom, 0px\) env\(safe-area-inset-left, 0px\);/, 'inside the safe areas');
+  assert.match(css, /html\[data-files="sheet"\] \.files-head \.files-close \{ display: inline-flex; \}/, 'with its close button, since it is outside the @container rule');
+  assert.match(css, /@media \(prefers-reduced-motion: no-preference\) \{\s*html\[data-files="sheet"\] \.files-panel \{ transition: transform \.22s ease; \}\s*@starting-style \{\s*html\[data-files="sheet"\] \.files-panel \{ transform: translateX\(-100%\); \}/, 'sliding in from the left');
+  const mac = bootHost(), app = bootHost();
+  mac.host().setFiles({access: 'granted', folder: 'F', current: 'a.txt', files: [{name: 'a.txt', modified: 1}]});
+  assert.equal(mac.document.documentElement.getAttribute('data-files'), null, 'the Mac app keeps its docked drawer');
+  assert.ok(!mac.document.body.children.includes(mac.nodes.filesPanel));
+  app.host().setFiles({access: 'granted', folder: 'F', current: 'a.txt', files: [{name: 'a.txt', modified: 1}], chooseFolder: true});
+  assert.equal(app.document.documentElement.getAttribute('data-files'), 'sheet');
+  assert.ok(app.document.body.children.includes(app.nodes.filesPanel), 'moved out of .work, which would confine a fixed panel to the text row');
+  app.host().setFiles({access: 'granted', folder: 'G', current: 'a.txt', files: [], chooseFolder: true});
+  assert.equal(app.document.body.children.filter(c => c === app.nodes.filesPanel).length, 1, 'moved once');
+});
+test('files drawer: the sheet does not stay open from the remembered setting at launch, but one the person opened does', () => {
+  const list = {access: 'granted', folder: 'F', current: 'a.txt', files: [], chooseFolder: true};
+  const restored = bootHost({'syl-files': 'on'});
+  assert.equal(restored.nodes.filesPanel.hidden, false);
+  restored.host().setFiles(list);
+  assert.equal(restored.nodes.filesPanel.hidden, true, 'it would cover the text');
+  assert.deepEqual(plain(restored.messages.at(-1)), {type: 'files', open: false});
+  const opened = bootHost();
+  opened.nodes.filesBtn.click(); opened.host().setFiles(list);
+  assert.equal(opened.nodes.filesPanel.hidden, false, 'the person asked for it');
+  const reopened = bootHost({'syl-files': 'on'});
+  reopened.nodes.filesBtn.click(); reopened.nodes.filesBtn.click(); reopened.host().setFiles(list);
+  assert.equal(reopened.nodes.filesPanel.hidden, false, 'a tap after launch counts, even if it only closed and reopened it');
+});
 test('files drawer: setFiles lists the folder, marks the open file and dates each one', () => {
   const b = bootHost(), n = b.nodes, now = Date.now();
   b.host().setFiles({access: 'granted', folder: 'Word Hammer', path: '~/Documents/Word Hammer', current: 'Creeps.txt',
