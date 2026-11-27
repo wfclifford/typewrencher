@@ -38,6 +38,10 @@ Not run: a second Mac window size (the Mac window is a single window), other the
 
 On 2026-11-27, with `main` at f90fffe (merge of #65, which includes the rhyme mark underline #63 and the files drawer filling the row on narrow windows #65), the site copy was rebuilt with `node tools/build-site.js mac/Typewrencher/site` and the Mac app rebuilt and run from Xcode (no build errors; the copy's `css/` and `js/app.js` matched the repo). **The owner ran the Mac app tests and reports that all of them pass.** I did not run them myself, and the owner did not list which checks were run, so this records "all Mac app tests", not individual items. Nothing in the Swift code changed.
 
+## Recheck: the full-screen files drawer for the iPhone and iPad app (#66), Mac unchanged (owner's pass)
+
+On 2026-11-27, after #66 was merged (`main` at ad30e4a), the owner ran the Mac app tests and reports that **all of them pass**. #66 changes the shared page so that, only when the host sends `chooseFolder` (the iPhone and iPad app does; this app does not), the files drawer becomes a full-screen sheet from the left; the Mac app must keep its docked drawer and the narrow-window fill from #65. I did not run the Mac tests myself, did not rebuild the Mac site copy, and do not know whether the owner rebuilt it first, and the owner did not list which checks were run, so this records "all Mac app tests", not individual items. Nothing in the Swift code changed. On the same day the owner also reported that all tests pass on the iPhone and on the iPad.
+
 ## Recheck: web changes #43, #47, #48, #49 in the Mac app
 
 Checked on the Mac (macOS 27.2) in a Debug build run from Xcode, `main` at 588628b, site copy rebuilt with `node tools/build-site.js mac/Typewrencher/site`. `node tools/stamp.js --check` is current and `node tests/app.test.js` passes (245). No code was changed: no check failed. I drove the real window with CGEvent clicks and screenshots, in a scratch folder `~/Developer/tw-check`. Window 1512×949 pt, then 480×700 and 1400×860 pt. The first launch showed a macOS "differs from previously opened versions" prompt; the owner chose Open Anyway.
