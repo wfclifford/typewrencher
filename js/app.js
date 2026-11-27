@@ -535,7 +535,19 @@
   // the stylesheet, not a number, so the breakpoint lives in one place (the @container rule in css/styles.css).
   function filesFull() {
     if (typeof getComputedStyle !== "function") return false;
-    try { return getComputedStyle(filesPanel).position === "absolute"; } catch (_) { return false; }
+    try { var position = getComputedStyle(filesPanel).position; return position === "absolute" || position === "fixed"; } catch (_) { return false; }
+  }
+  // The iPhone and iPad app: the drawer is a full-screen sheet over the whole page (the CSS under data-files="sheet"). A fixed
+  // panel inside .work would be confined to the text row (.work contains layout), so the panel moves out to <body>. The page
+  // learns it is in that app from the first setFiles (chooseFolder: true). If the drawer was only reopened from the remembered
+  // setting at launch, it closes again, since a full-screen drawer would cover the text.
+  var filesSheet = false, filesRestored = false;
+  function enterFilesSheet() {
+    if (filesSheet) return;
+    filesSheet = true;
+    document.body.appendChild(filesPanel);
+    root.setAttribute("data-files", "sheet");
+    if (filesOpen && filesRestored) setFilesOpen(false, false);
   }
   // While the drawer covers the text, the text is out of the Tab order and hidden from screen readers.
   function syncFilesFull() {
@@ -635,6 +647,7 @@
     filesNote.hidden = state.access === "granted";
     filesGrant.hidden = state.access !== "needed";
     filesChoose.hidden = state.chooseFolder !== true; // only a host that can show a folder picker (the iPhone and iPad app) asks for the button
+    if (state.chooseFolder === true) enterFilesSheet();
     filesList.textContent = "";
     armedKept = false;
     var now = new Date();
@@ -664,6 +677,7 @@
     document.getElementById("aboutSkull").textContent = "The plus button starts a new document. Your text is saved to its file as you type.";
     filesBtn.hidden = false;
     filesBtn.addEventListener("click", function (e) {
+      filesRestored = false;
       var open = !filesOpen;
       setFilesOpen(open, true);
       // Closing the drawer with a finger or the mouse puts the caret back in the text (and brings the keyboard back
@@ -733,7 +747,7 @@
     ed.addEventListener("blur", host.flush);
     window.addEventListener("pagehide", host.flush);
     host.post({ type: "ready", protocol: host.protocol });
-    if (load("syl-files") === "on" && !filesFull()) setFilesOpen(true, false); // a full-size drawer would cover the text at launch
+    if (load("syl-files") === "on" && !filesFull()) { filesRestored = true; setFilesOpen(true, false); } // a full-size drawer would cover the text at launch
   }
 
   const useDictionary = document.getElementById('useCMUdict');
