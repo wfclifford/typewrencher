@@ -54,17 +54,9 @@ struct DocumentStore {
 
     // MARK: Listing
 
-    // The .txt files in the folder, newest first, for the files drawer.
-    func textFiles() -> [(name: String, modified: Date)] {
-        let keys: [URLResourceKey] = [.contentModificationDateKey, .contentTypeKey, .isRegularFileKey]
-        guard let urls = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: keys,
-                                                                       options: [.skipsHiddenFiles]) else { return [] }
-        return urls.compactMap { url -> (name: String, modified: Date)? in
-            guard let values = try? url.resourceValues(forKeys: Set(keys)), values.isRegularFile == true,
-                  values.contentType == .plainText || url.pathExtension.lowercased() == "txt" else { return nil }
-            return (url.lastPathComponent, values.contentModificationDate ?? .distantPast)
-        }
-        .sorted { $0.modified > $1.modified }
+    // The .txt files in the folder, newest first, for the files drawer (a coordinated listing on a background queue).
+    func textFiles() async -> [(name: String, modified: Date)] {
+        await FileAccess.textFiles(in: folder)
     }
 
     // The Files app shows the app's Documents folder under the app's name, so the drawer does too.
@@ -110,39 +102,23 @@ struct DocumentStore {
     // An untitled file this app created that is still empty (zero bytes) is deleted when the person leaves it.
     // iOS has no Trash for an app's own files; nothing is lost, the file has no content. Any other file is kept,
     // including an empty untitled.txt the person made themselves in a chosen folder.
-    func removeIfEmptyUntitled(_ url: URL) {
+    // The size is checked inside the coordinated delete (FileAccess.removeIfEmpty), so a file that gained text is never removed.
+    func removeIfEmptyUntitled(_ url: URL) async {
         guard isUntitled(url) else { return }
-        let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.intValue
-        guard size == 0 else { if size == nil { setUntitled(url, false) }; return }
-        if (try? FileManager.default.removeItem(at: url)) != nil { setUntitled(url, false) }
+        switch await FileAccess.removeIfEmpty(url) {
+        case .removed, .missing: setUntitled(url, false)
+        case .kept: break
+        }
     }
 
     // A file with this text under a free name in the folder (name.txt, name 2.txt, ...): used to keep text that could not be
     // saved where it belongs. It is an ordinary file, never one of the untitled files the app may delete.
-    func createFile(named base: String, text: String) throws -> URL {
-        let fm = FileManager.default
-        var url = folder.appendingPathComponent(base + ".txt")
-        var number = 2
-        while fm.fileExists(atPath: url.path) {
-            url = folder.appendingPathComponent("\(base) \(number).txt")
-            number += 1
-        }
-        try Data(text.utf8).write(to: url, options: .atomic)
-        return url
+    func createFile(named base: String, text: String) async throws -> URL {
+        try await FileAccess.create(named: base, contents: Data(text.utf8), in: folder)
     }
 
     // untitled.txt, untitled 2.txt, ... the first name that is free.
-    func createUntitled() throws -> URL {
-        let fm = FileManager.default
-        var url = folder.appendingPathComponent("untitled.txt")
-        var number = 2
-        while fm.fileExists(atPath: url.path) {
-            url = folder.appendingPathComponent("untitled \(number).txt")
-            number += 1
-        }
-        guard fm.createFile(atPath: url.path, contents: Data()) else {
-            throw CocoaError(.fileWriteNoPermission)
-        }
-        return url
+    func createUntitled() async throws -> URL {
+        try await FileAccess.create(named: "untitled", contents: Data(), in: folder)
     }
 }

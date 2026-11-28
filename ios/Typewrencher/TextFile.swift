@@ -1,7 +1,8 @@
 import Foundation
 
-// Documents are plain UTF-8 .txt files with no per-document settings.
-enum TextFile {
+// Documents are plain UTF-8 .txt files with no per-document settings. These are the raw reads and writes; the app goes
+// through FileAccess, which runs them under file coordination on a background queue.
+nonisolated enum TextFile {
     struct NotUTF8: LocalizedError {
         var errorDescription: String? { "it is not UTF-8 text" }
     }

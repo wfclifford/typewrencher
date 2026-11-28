@@ -22,8 +22,9 @@ final class EditorSession {
     private var saveWork: DispatchWorkItem?
     private var saveFailure: String?    // why the last save failed, until a save of this file works
     private var leaving: URL?           // the file just left, until the page shows the new one: late typing belongs to it
-    private var operations: [(@escaping () -> Void) -> Void] = []
+    private var operations: [() async -> Void] = []
     private var operating = false
+    private var filesRequest = 0        // the newest request for the drawer's list; an older answer that arrives late is dropped
     private static let saveDelay = 0.4  // seconds after the page's (already debounced) textChanged
 
     private var name: String { fileURL.map { DocumentStore.displayName($0) } ?? "" }
@@ -50,22 +51,25 @@ final class EditorSession {
         if !launched {
             launched = true
             launch()
-            if let notice = launchNotice { launchNotice = nil; notify(notice) }
         } else {
             push()
         }
     }
 
     private func launch() {
-        // openNow() already says why when the last file cannot be read, so no second message here: it would hide the reason.
-        if let last = store.lastFile, openNow(last) { return }
-        createUntitledDocument()
+        perform {
+            // openNow() already says why when the last file cannot be read, so no second message here: it would hide the reason.
+            if let last = self.store.lastFile, await self.openNow(last) {} else { await self.createUntitledDocument() }
+            if let notice = self.launchNotice { self.launchNotice = nil; self.notify(notice) }
+        }
     }
 
     // MARK: One operation at a time
 
-    // Runs an operation that changes which file is open after the ones before it have finished.
-    private func perform(_ operation: @escaping (@escaping () -> Void) -> Void) {
+    // Everything that reads or writes files, or changes which file is open, runs here: in turn, each after the one before
+    // it has finished. While an operation waits for a file the page stays free (file access is off the main thread), so
+    // typing during that wait can happen; the operations settle() before they switch files so none of it is lost.
+    private func perform(_ operation: @escaping () async -> Void) {
         operations.append(operation)
         runNextOperation()
     }
@@ -74,7 +78,8 @@ final class EditorSession {
         guard !operating, !operations.isEmpty else { return }
         operating = true
         let operation = operations.removeFirst()
-        operation {
+        Task {
+            await operation()
             self.operating = false
             self.runNextOperation()
         }
@@ -86,12 +91,10 @@ final class EditorSession {
     // save the current file, read the new one, then show it. On any failure the current file stays open and the
     // person is told why.
     func switchTo(_ target: URL, then done: ((Bool) -> Void)? = nil) {
-        perform { finished in
-            self.currentText { _ in
-                let opened = self.openNow(target)
-                done?(opened)
-                finished()
-            }
+        perform {
+            _ = await self.currentText()
+            let opened = await self.openNow(target)
+            done?(opened)
         }
     }
 
@@ -103,23 +106,26 @@ final class EditorSession {
 
     // The switch itself, for use inside an operation.
     @discardableResult
-    private func openNow(_ target: URL, createdUntitled: Bool = false) -> Bool {
+    private func openNow(_ target: URL, createdUntitled: Bool = false) async -> Bool {
         let url = target.standardizedFileURL
         if url == fileURL { push(); return true }
-        if fileURL != nil { guard saveNow() else { return false } }
+        if fileURL != nil { guard await settle() else { return false } }
         let newText: String
         do {
-            newText = try TextFile.read(url)
+            newText = try await FileAccess.read(url)
         } catch {
             notify("Typewrencher couldn\u{2019}t open \(DocumentStore.displayName(url)): \(Self.reason(error)).")
             return false
         }
+        // The read may have taken a while (a file that has to be downloaded) and the page stayed free to type in, so what
+        // was typed meanwhile is saved to the file being left before this one replaces it. Nothing awaits from here to the
+        // end of the switch, so nothing can be typed in between.
+        if fileURL != nil { guard await settle() else { return false } }
         let old = fileURL
         fileURL = url
         text = newText
         savedText = newText
         if createdUntitled { store.setUntitled(url, true) }
-        if let old { store.removeIfEmptyUntitled(old) }
         releaseFileAccessIfLeft()
         releaseUnusedFolders()
         if saveFailure != nil { saveFailure = nil; notify("") }   // the failing file was left; its notice no longer applies
@@ -127,38 +133,56 @@ final class EditorSession {
         leaving = old
         store.remember(url)
         push(newText: true)
+        // An empty untitled file the person walked away from is removed before the list is sent, so it is not listed.
+        if let old { await store.removeIfEmptyUntitled(old) }
         sendFiles()
         return true
     }
 
     // The "+" button: a new untitled file, after the current one is saved. A blank untitled page is not replaced.
     func newDocument() {
-        perform { finished in
-            self.currentText { _ in
-                if let url = self.fileURL, self.store.isUntitled(url), self.text.isEmpty, self.savedText.isEmpty { return finished() }
-                guard self.saveNow() else { return finished() }
-                self.createUntitledDocument()
-                finished()
-            }
+        perform {
+            _ = await self.currentText()
+            if let url = self.fileURL, self.store.isUntitled(url), self.text.isEmpty, self.savedText.isEmpty { return }
+            guard await self.settle() else { return }
+            await self.createUntitledDocument()
         }
     }
 
-    private func createUntitledDocument() {
+    private func createUntitledDocument() async {
         do {
-            openNow(try store.createUntitled(), createdUntitled: true)
+            let url = try await store.createUntitled()
+            await openNow(url, createdUntitled: true)
         } catch {
             notify("Typewrencher couldn\u{2019}t create a document: \(Self.reason(error)).")
         }
     }
 
     // Asks the page for the text it has this moment (the page sends changes with a short delay).
-    private func currentText(_ done: @escaping (String) -> Void) {
-        guard let web, launched else { return done(text) }
+    private func currentText() async -> String {
+        guard let web, launched else { return text }
         let file = fileURL
-        web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.getText()") { result, _ in
-            if let newText = result as? String, self.fileURL == file, self.leaving == nil { self.text = newText }
-            done(self.text)
+        // The completion-handler form, not the async one: a page that answers undefined or null would trap the async form.
+        let result: Any? = await withCheckedContinuation { continuation in
+            web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.getText()") { result, _ in
+                continuation.resume(returning: result)
+            }
         }
+        if let newText = result as? String, fileURL == file, leaving == nil { text = newText }
+        return text
+    }
+
+    // Saves until what the page holds is what the file holds, so that nothing typed while an operation was waiting on a
+    // file is lost by what the operation does next (switching files, renaming, changing folder). False if it could not be
+    // saved, or the page would not hold still; the operation then stops and the text stays on the page.
+    private func settle() async -> Bool {
+        guard fileURL != nil else { return true }
+        for _ in 0..<20 {
+            _ = await currentText()
+            guard await saveNow() else { return false }
+            if text == savedText { return true }
+        }
+        return false
     }
 
     // MARK: Renaming
@@ -166,51 +190,37 @@ final class EditorSession {
     // The page's name field: rename the file in its folder. A refused rename sends the old name back to the page,
     // says why on the notice line, and replies with an error (the reply to the page's message).
     func rename(to raw: String, reply: @escaping (String?) -> Void) {
-        perform { finished in
-            self.renameNow(raw) { error in reply(error); finished() }
+        perform {
+            reply(await self.renameNow(raw))
         }
     }
 
-    private func renameNow(_ raw: String, done: @escaping (String?) -> Void) {
-        guard let url = fileURL else { return done(nil) }
+    // The reply to the page: nil when done (or nothing to do), else a short reason.
+    private func renameNow(_ raw: String) async -> String? {
+        guard let url = fileURL else { return nil }
         let clean = DocumentStore.cleanName(raw)
-        guard !clean.isEmpty, clean != name else { push(); return done(nil) }   // nothing to rename
+        guard !clean.isEmpty, clean != name else { push(); return nil }   // nothing to rename
         let target = url.deletingLastPathComponent().appendingPathComponent(clean + ".txt").standardizedFileURL   // the file's own folder
         let caseOnly = target.path.lowercased() == url.path.lowercased()   // "poem" to "Poem"
         if !caseOnly, FileManager.default.fileExists(atPath: target.path) {
             push()
             notify("A file named \(clean) already exists.")
-            return done("exists")
+            return "exists"
         }
-        guard saveNow() else { push(); return done("save failed") }
+        guard await settle() else { push(); return "save failed" }
         do {
-            try Self.move(url, to: target, caseOnly: caseOnly)
+            try await FileAccess.move(url, to: target, caseOnly: caseOnly)
         } catch {
             push()
             notify("Typewrencher couldn\u{2019}t rename \(name): \(Self.reason(error)).")
-            return done("failed")
+            return "failed"
         }
         store.setUntitled(url, false)   // a named file is kept even when empty
         fileURL = target
         store.remember(target)
         push()
         sendFiles()
-        done(nil)
-    }
-
-    // On a case-insensitive volume a rename that only changes case can be refused as "already exists";
-    // then it goes through a temporary name in the same folder.
-    private static func move(_ url: URL, to target: URL, caseOnly: Bool) throws {
-        do {
-            try FileManager.default.moveItem(at: url, to: target)
-        } catch where caseOnly {
-            let temporary = url.deletingLastPathComponent().appendingPathComponent(".typewrencher-rename-\(UUID().uuidString).txt")
-            try FileManager.default.moveItem(at: url, to: temporary)
-            do { try FileManager.default.moveItem(at: temporary, to: target) } catch {
-                try? FileManager.default.moveItem(at: temporary, to: url)   // put it back
-                throw error
-            }
-        }
+        return nil
     }
 
     // MARK: Saving
@@ -220,12 +230,15 @@ final class EditorSession {
         if let old = leaving {
             // Typed into the file just left, before the page showed the new one: it belongs there, unless that file
             // is gone, which a late write must not bring back.
-            if FileManager.default.fileExists(atPath: old.path), !ChosenFolder.isInTrash(old) { try? TextFile.write(newText, to: old) }
+            if FileManager.default.fileExists(atPath: old.path), !ChosenFolder.isInTrash(old) {
+                Task { try? await FileAccess.write(newText, to: old) }   // writes keep the order they were asked for
+            }
             return
         }
         text = newText
         saveWork?.cancel()
-        let work = DispatchWorkItem { [weak self] in self?.saveNow() }
+        // A save is an operation like any other, so it never overlaps a switch or a rename.
+        let work = DispatchWorkItem { [weak self] in self?.perform { _ = await self?.saveNow() } }
         saveWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.saveDelay, execute: work)
     }
@@ -238,16 +251,17 @@ final class EditorSession {
     // (sticky) until a save of this file works, and the text stays in the page. A file moved or deleted outside
     // the app (in the Files app, say) is not recreated, so a file the person removed does not come back on its own.
     @discardableResult
-    func saveNow() -> Bool {
+    func saveNow() async -> Bool {
         saveWork?.cancel(); saveWork = nil
         guard let url = fileURL, text != savedText else { return true }
+        let saving = text   // what is being written; more may be typed while the write runs, and the next save writes that
         do {
             // A file the person deleted in the Files app is moved to Recently Deleted and the URL we hold can follow it there;
             // new text must not be written into the trash, where it would be emptied away in about 30 days. It stays unsaved,
             // on the page, and is kept as a new file in the app's folder when the app notices (leaveFolderIfLost).
             guard FileManager.default.fileExists(atPath: url.path), !ChosenFolder.isInTrash(url) else { throw MovedOrDeleted() }
-            try TextFile.write(text, to: url)
-            savedText = text
+            try await FileAccess.write(saving, to: url)
+            savedText = saving
             if saveFailure != nil {
                 saveFailure = nil
                 notify("")
@@ -266,16 +280,15 @@ final class EditorSession {
     // the page, inside a background task so iOS does not suspend the app halfway.
     func saveBeforeLeaving() {
         guard fileURL != nil else { return }
-        saveNow()
-        guard let web else { return }
+        // The background task starts first, before anything waits, so iOS keeps the app running until both saves are done.
         // The identifier only exists after beginBackgroundTask returns, but its expiration handler needs it too; a plain
         // variable captured by that handler and assigned afterwards is what Swift's concurrency checking rejects.
         let task = BackgroundTask()
         task.id = UIApplication.shared.beginBackgroundTask { UIApplication.shared.endBackgroundTask(task.id) }
-        let file = fileURL
-        web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.getText()") { result, _ in
-            if let newText = result as? String, self.fileURL == file, self.leaving == nil { self.text = newText }
-            self.saveNow()
+        perform {
+            await self.saveNow()               // what is already known first, in case the page does not answer in time
+            _ = await self.currentText()       // then what the page holds this moment
+            await self.saveNow()
             UIApplication.shared.endBackgroundTask(task.id)
         }
     }
@@ -343,14 +356,12 @@ final class EditorSession {
 
     private func openPicked(_ file: URL) {
         let started = file.startAccessingSecurityScopedResource()
-        perform { finished in
-            self.currentText { _ in
-                if self.openNow(file) {
-                    self.fileAccess = started ? file : nil   // kept for as long as this is the open file
-                } else if started {
-                    file.stopAccessingSecurityScopedResource()
-                }
-                finished()
+        perform {
+            _ = await self.currentText()
+            if await self.openNow(file) {
+                self.fileAccess = started ? file : nil   // kept for as long as this is the open file
+            } else if started {
+                file.stopAccessingSecurityScopedResource()
             }
         }
     }
@@ -386,35 +397,32 @@ final class EditorSession {
             return notify("Typewrencher couldn\u{2019}t get access to \(folder.lastPathComponent).")
         }
         let endAccess = { if started { folder.stopAccessingSecurityScopedResource() } }
-        perform { finished in
-            self.currentText { _ in
-                guard self.saveNow() else { endAccess(); return finished() }
-                if isAppFolder {
-                    ChosenFolder.clear()
+        perform {
+            guard await self.settle() else { endAccess(); return }
+            if isAppFolder {
+                ChosenFolder.clear()
+                endAccess()
+            } else {
+                do { try ChosenFolder.save(folder) } catch {
                     endAccess()
-                } else {
-                    do { try ChosenFolder.save(folder) } catch {
-                        endAccess()
-                        self.notify("Typewrencher couldn\u{2019}t remember \(folder.lastPathComponent): \(Self.reason(error)).")
-                        return finished()
-                    }
-                    self.hold(folder)
+                    self.notify("Typewrencher couldn\u{2019}t remember \(folder.lastPathComponent): \(Self.reason(error)).")
+                    return
                 }
-                self.switchStore(to: isAppFolder ? DocumentStore() : DocumentStore(folder: folder))
-                finished()
+                self.hold(folder)
             }
+            await self.switchStore(to: isAppFolder ? DocumentStore() : DocumentStore(folder: folder))
         }
     }
 
     // Moves to a document in the new documents folder and tells the person where the earlier ones are.
-    private func switchStore(to new: DocumentStore) {
+    private func switchStore(to new: DocumentStore) async {
         let old = store
         store = new
         guard !DocumentStore.sameFolder(old.folder, new.folder) else {   // the same folder chosen again
             releaseUnusedFolders()
             return sendFiles()
         }
-        openFirstDocument()
+        await openFirstDocument()
         releaseUnusedFolders()
         sendFiles()
         if new.isAppFolder {   // so the folder left was a chosen one
@@ -427,15 +435,17 @@ final class EditorSession {
 
     // The document to show in a folder just switched to: the one open there last, else the newest .txt, else a new
     // untitled file. A file that cannot be read is skipped (openNow says why), up to five of them.
-    private func openFirstDocument() {
+    private func openFirstDocument() async {
         var candidates: [URL] = []
         if let last = store.lastFile { candidates.append(last) }
-        for file in store.textFiles() {
+        for file in await store.textFiles() {
             let url = store.folder.appendingPathComponent(file.name)
             if !candidates.contains(url) { candidates.append(url) }
         }
-        for url in candidates.prefix(5) where openNow(url) { return }
-        createUntitledDocument()
+        for url in candidates.prefix(5) {
+            if await openNow(url) { return }
+        }
+        await createUntitledDocument()
     }
 
     // Remembers a folder access was started for. A folder already held is not held twice: the extra start is ended.
@@ -481,43 +491,55 @@ final class EditorSession {
     private func leaveFolderIfLost() -> Bool {
         guard launched, !store.isAppFolder, !ChosenFolder.isReachable(store.folder) else { return false }
         let lostName = store.folderLabel
-        perform { finished in
-            self.currentText { _ in
-                var kept: String?
-                if let url = self.fileURL, self.text != self.savedText {
-                    do {
-                        let copy = try DocumentStore().createFile(named: DocumentStore.displayName(url), text: self.text)
-                        self.savedText = self.text   // it is saved, in the new place
-                        kept = copy.deletingPathExtension().lastPathComponent
-                    } catch {
-                        // Not even that worked: stay where we are, the text is still on the page, and say so.
-                        self.notify("Typewrencher couldn\u{2019}t reach \u{201c}\(lostName)\u{201d}, and couldn\u{2019}t keep your text elsewhere: \(Self.reason(error)). Your text is still on the page; Export keeps a copy.", sticky: true)
-                        return finished()
-                    }
+        perform {
+            _ = await self.currentText()
+            var kept: String?
+            if let url = self.fileURL, self.text != self.savedText {
+                do {
+                    let copy = try await DocumentStore().createFile(named: DocumentStore.displayName(url), text: self.text)
+                    self.savedText = self.text   // it is saved, in the new place
+                    kept = copy.deletingPathExtension().lastPathComponent
+                } catch {
+                    // Not even that worked: stay where we are, the text is still on the page, and say so.
+                    self.notify("Typewrencher couldn\u{2019}t reach \u{201c}\(lostName)\u{201d}, and couldn\u{2019}t keep your text elsewhere: \(Self.reason(error)). Your text is still on the page; Export keeps a copy.", sticky: true)
+                    return
                 }
-                self.store = DocumentStore()   // the bookmark stays: a folder that comes back works again at the next launch
-                self.openFirstDocument()
-                self.releaseUnusedFolders()
-                self.sendFiles()
-                let note = Self.lostNotice(lostName)
-                self.notify(kept.map { note + " A copy of your latest text is in the Typewrencher folder as \u{201c}\($0)\u{201d}." } ?? note)
-                finished()
             }
+            self.store = DocumentStore()   // the bookmark stays: a folder that comes back works again at the next launch
+            await self.openFirstDocument()
+            self.releaseUnusedFolders()
+            self.sendFiles()
+            let note = Self.lostNotice(lostName)
+            self.notify(kept.map { note + " A copy of your latest text is in the Typewrencher folder as \u{201c}\($0)\u{201d}." } ?? note)
         }
         return true
     }
 
-    // Sends the page the .txt files in the Documents folder (TypewrencherHost.setFiles).
+    // Sends the page the .txt files in the Documents folder (TypewrencherHost.setFiles). The listing is read off the main
+    // thread, so the page gets it a moment later; if another list was asked for meanwhile, this older one is dropped.
     private func sendFiles() {
-        guard launched, filesOpen, let web, let file = fileURL else { return }
-        let files = store.textFiles().map { ["name": $0.name, "modified": ($0.modified.timeIntervalSince1970 * 1000).rounded()] as [String: Any] }
-        // The open file is highlighted only if it is in the listed folder (a file in another folder may share a name).
-        let inListedFolder = DocumentStore.sameFolder(file.deletingLastPathComponent(), store.folder)
-        let state: [String: Any] = ["access": "granted", "folder": store.folderLabel, "path": store.displayPath,
-                                    "current": inListedFolder ? file.lastPathComponent : "", "files": files,
-                                    "trash": false,          // this app has no Trash for its files: the page draws no trash buttons
-                                    "chooseFolder": true]    // and it can show a folder picker: the page draws the Choose folder button
-        guard let json = try? JSONSerialization.data(withJSONObject: state), let js = String(data: json, encoding: .utf8) else { return }
+        guard launched, filesOpen, web != nil, fileURL != nil else { return }
+        filesRequest += 1
+        let request = filesRequest
+        let listed = store
+        Task {
+            let found = await listed.textFiles()
+            guard request == self.filesRequest, self.filesOpen, let web = self.web, let file = self.fileURL else { return }
+            let files = found.map { ["name": $0.name, "modified": ($0.modified.timeIntervalSince1970 * 1000).rounded()] as [String: Any] }
+            // The open file is highlighted only if it is in the listed folder (a file in another folder may share a name).
+            let inListedFolder = DocumentStore.sameFolder(file.deletingLastPathComponent(), listed.folder)
+            let state: [String: Any] = ["access": "granted", "folder": listed.folderLabel, "path": listed.displayPath,
+                                        "current": inListedFolder ? file.lastPathComponent : "", "files": files,
+                                        "trash": false,          // this app has no Trash for its files: the page draws no trash buttons
+                                        "chooseFolder": true]    // and it can show a folder picker: the page draws the Choose folder button
+            guard let json = try? JSONSerialization.data(withJSONObject: state), let js = String(data: json, encoding: .utf8) else { return }
+            Self.deliverFiles(js, to: web)
+        }
+    }
+
+    // A plain function, so the call to evaluateJavaScript is not in an async context (where Swift would suggest its async form,
+    // which throws and has no use here: the page answers nothing).
+    private static func deliverFiles(_ js: String, to web: WKWebView) {
         web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.setFiles && window.TypewrencherHost.setFiles(\(js))")
     }
 
