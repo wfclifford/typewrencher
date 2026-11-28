@@ -188,13 +188,16 @@ footer strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabul
   .files-list .file { min-height: var(--hit); }
 }
 /* iPhone and iPad app only (the page sets data-files="sheet" when the host offers the folder picker): the drawer is a
-   full-screen sheet over the whole page, sliding in from the left the way Settings slides in from the right. The page moves
-   the panel out of .work, which contains layout and would confine a fixed panel to the text row; that also takes it out of
-   the @container rule above, so what that rule gives a narrow row is repeated here. */
+   full-height sheet over the page, as wide as Settings (leaving 2.5rem of the page showing on a phone), sliding in from the
+   left the way Settings slides in from the right, with the same dimmed backdrop (.files-scrim, which a tap closes). The page
+   moves the panel out of .work, which contains layout and would confine a fixed panel to the text row; that also takes it out
+   of the @container rule above, so what that rule gives a narrow row is repeated here. */
 html[data-files="sheet"] .files-panel {
-  position: fixed; z-index: 5; inset: 0; width: auto; height: 100vh; height: 100dvh; border: 0; border-radius: 0; box-shadow: none;
-  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  position: fixed; z-index: 5; inset: 0 auto 0 0; width: min(var(--drawer-w), calc(100vw - 2.5rem)); height: 100vh; height: 100dvh;
+  border: 0; border-right: 1px solid var(--edge); border-radius: 0; box-shadow: 8px 0 24px rgba(0, 0, 0, .18);
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 }
+.files-scrim { position: fixed; z-index: 4; inset: 0; background: rgba(0, 0, 0, .2); }
 html[data-files="sheet"] .files-head { align-items: center; }
 html[data-files="sheet"] .files-head .files-close { display: inline-flex; }
 html[data-files="sheet"] .files-list .file { min-height: var(--hit); }

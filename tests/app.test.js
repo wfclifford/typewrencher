@@ -1975,10 +1975,11 @@ test('files drawer: a remembered open drawer opens after ready, and Reset to def
   n.resetPrefs.click();
   assert.equal(n.filesPanel.hidden, true); assert.deepEqual(plain(b.messages.at(-1)), {type: 'files', open: false});
 });
-test('files drawer: in the iPhone and iPad app it is a full-screen sheet that slides in from the left', () => {
+test('files drawer: in the iPhone and iPad app it is a sheet as wide as Settings that slides in from the left over a dimmed page', () => {
   const css = read('css/styles.css');
-  assert.match(css, /html\[data-files="sheet"\] \.files-panel \{\s*position: fixed; z-index: 5; inset: 0; width: auto; height: 100vh; height: 100dvh;/, 'fixed over the whole viewport');
-  assert.match(css, /html\[data-files="sheet"\] \.files-panel \{[^}]*padding: env\(safe-area-inset-top, 0px\) env\(safe-area-inset-right, 0px\) env\(safe-area-inset-bottom, 0px\) env\(safe-area-inset-left, 0px\);/, 'inside the safe areas');
+  assert.match(css, /html\[data-files="sheet"\] \.files-panel \{\s*position: fixed; z-index: 5; inset: 0 auto 0 0; width: min\(var\(--drawer-w\), calc\(100vw - 2\.5rem\)\); height: 100vh; height: 100dvh;/, 'full height, as wide as Settings, leaving 2.5rem of the page on a phone');
+  assert.match(css, /html\[data-files="sheet"\] \.files-panel \{[^}]*padding: env\(safe-area-inset-top, 0px\) 0 env\(safe-area-inset-bottom, 0px\) env\(safe-area-inset-left, 0px\);/, 'inside the safe areas');
+  assert.match(css, /\.files-scrim \{ position: fixed; z-index: 4; inset: 0; background: rgba\(0, 0, 0, \.2\); \}/, 'under the panel, over the page, dimmed like the Settings backdrop');
   assert.match(css, /html\[data-files="sheet"\] \.files-head \.files-close \{ display: inline-flex; \}/, 'with its close button, since it is outside the @container rule');
   assert.match(css, /@media \(prefers-reduced-motion: no-preference\) \{\s*html\[data-files="sheet"\] \.files-panel \{ transition: transform \.22s ease; \}\s*@starting-style \{\s*html\[data-files="sheet"\] \.files-panel \{ transform: translateX\(-100%\); \}/, 'sliding in from the left');
   const mac = bootHost(), app = bootHost();
@@ -1990,6 +1991,23 @@ test('files drawer: in the iPhone and iPad app it is a full-screen sheet that sl
   assert.ok(app.document.body.children.includes(app.nodes.filesPanel), 'moved out of .work, which would confine a fixed panel to the text row');
   app.host().setFiles({access: 'granted', folder: 'G', current: 'a.txt', files: [], chooseFolder: true});
   assert.equal(app.document.body.children.filter(c => c === app.nodes.filesPanel).length, 1, 'moved once');
+});
+test('files drawer: the dimmed backdrop shows only while the sheet is open, and a tap on it closes the sheet', () => {
+  const list = {access: 'granted', folder: 'F', current: 'a.txt', files: [], chooseFolder: true};
+  const scrimOf = b => b.document.body.children.filter(c => c.className === 'files-scrim');
+  const mac = bootHost(); mac.nodes.filesBtn.click(); mac.host().setFiles({access: 'granted', folder: 'F', files: []});
+  assert.equal(scrimOf(mac).length, 0, 'the Mac app has no backdrop');
+  const b = bootHost(), n = b.nodes;
+  b.host().setFiles(list);
+  assert.equal(scrimOf(b).length, 1); assert.equal(scrimOf(b)[0].hidden, true, 'hidden while the drawer is closed');
+  n.filesBtn.click();
+  assert.equal(n.filesPanel.hidden, false); assert.equal(scrimOf(b)[0].hidden, false, 'shown with the open drawer');
+  b.host().setFiles(list); assert.equal(scrimOf(b).length, 1, 'made once');
+  scrimOf(b)[0].click();
+  assert.equal(n.filesPanel.hidden, true); assert.equal(scrimOf(b)[0].hidden, true);
+  assert.deepEqual(plain(b.messages.at(-1)), {type: 'files', open: false});
+  const opened = bootHost(); opened.nodes.filesBtn.click(); opened.host().setFiles(list);
+  assert.equal(scrimOf(opened)[0].hidden, false, 'a drawer already open when the page learns it is the sheet gets its backdrop');
 });
 test('files drawer: the sheet does not stay open from the remembered setting at launch, but one the person opened does', () => {
   const list = {access: 'granted', folder: 'F', current: 'a.txt', files: [], chooseFolder: true};
