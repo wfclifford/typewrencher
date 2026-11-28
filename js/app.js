@@ -537,15 +537,24 @@
     if (typeof getComputedStyle !== "function") return false;
     try { var position = getComputedStyle(filesPanel).position; return position === "absolute" || position === "fixed"; } catch (_) { return false; }
   }
-  // The iPhone and iPad app: the drawer is a full-screen sheet over the whole page (the CSS under data-files="sheet"). A fixed
-  // panel inside .work would be confined to the text row (.work contains layout), so the panel moves out to <body>. The page
-  // learns it is in that app from the first setFiles (chooseFolder: true). If the drawer was only reopened from the remembered
-  // setting at launch, it closes again, since a full-screen drawer would cover the text.
-  var filesSheet = false, filesRestored = false;
+  // The iPhone and iPad app: the drawer is a sheet over the page, as wide as Settings, with a dimmed backdrop that a tap closes
+  // (the CSS under data-files="sheet"). A fixed panel inside .work would be confined to the text row (.work contains layout), so
+  // the panel moves out to <body>. The page learns it is in that app from the first setFiles (chooseFolder: true). If the drawer
+  // was only reopened from the remembered setting at launch, it closes again, since a sheet over the text is not wanted at launch.
+  var filesSheet = false, filesRestored = false, filesScrim = null;
   function enterFilesSheet() {
     if (filesSheet) return;
     filesSheet = true;
     document.body.appendChild(filesPanel);
+    filesScrim = document.createElement("div");
+    filesScrim.className = "files-scrim";
+    filesScrim.hidden = !filesOpen;
+    // Like a tap on Settings' backdrop: the same as the close button, caret back in the text.
+    filesScrim.addEventListener("click", function (e) {
+      setFilesOpen(false, true);
+      if (e && e.detail > 0) ed.focus();
+    });
+    document.body.appendChild(filesScrim);
     root.setAttribute("data-files", "sheet");
     if (filesOpen && filesRestored) setFilesOpen(false, false);
   }
@@ -556,6 +565,7 @@
   function setFilesOpen(open, persist) {
     filesOpen = open;
     filesPanel.hidden = !open;
+    if (filesScrim) filesScrim.hidden = !open;
     filesBtn.setAttribute("aria-pressed", String(open));
     if (persist) store("syl-files", open ? "on" : "off");
     syncFilesFull();
