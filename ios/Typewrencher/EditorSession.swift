@@ -268,14 +268,21 @@ final class EditorSession {
         guard fileURL != nil else { return }
         saveNow()
         guard let web else { return }
-        var task = UIBackgroundTaskIdentifier.invalid
-        task = UIApplication.shared.beginBackgroundTask { UIApplication.shared.endBackgroundTask(task) }
+        // The identifier only exists after beginBackgroundTask returns, but its expiration handler needs it too; a plain
+        // variable captured by that handler and assigned afterwards is what Swift's concurrency checking rejects.
+        let task = BackgroundTask()
+        task.id = UIApplication.shared.beginBackgroundTask { UIApplication.shared.endBackgroundTask(task.id) }
         let file = fileURL
         web.evaluateJavaScript("window.TypewrencherHost && window.TypewrencherHost.getText()") { result, _ in
             if let newText = result as? String, self.fileURL == file, self.leaving == nil { self.text = newText }
             self.saveNow()
-            UIApplication.shared.endBackgroundTask(task)
+            UIApplication.shared.endBackgroundTask(task.id)
         }
+    }
+
+    // Holds the identifier of the background task saveBeforeLeaving starts, so the closures share one value.
+    private final class BackgroundTask {
+        var id = UIBackgroundTaskIdentifier.invalid
     }
 
     // MARK: Export
