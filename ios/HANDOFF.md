@@ -428,6 +428,8 @@ Assumptions to confirm (change them in the pull request if wrong):
 4. The live drawer refresh is a nice-to-have, built last, and dropped if it proves unreliable.
 5. File access moves off the main thread even for local files, so there is one code path.
 
+**Confirmed by the owner on 2026-11-28: all five assumptions stand as written.** The agreed order with the delete task (see "iOS files drawer, deleting files"): the delete spike first (it is independent and runs on the iPhone), then 2c step 1 (coordinated, off-main-thread file access), then the delete build (a coordinated write, so it uses that access path), then 2c watching the open file (so the app trashing its own file is handled from the start), then iCloud files that are not downloaded, then the live drawer refresh and the 2b carry-overs.
+
 How it can be tested: the simulator has no iCloud account, so everything involving iCloud, and any edit "from another app", needs a device and usually a second device or the Mac editing the same file in iCloud Drive; the owner runs those and sends results back. In the simulator an outside change can be made by editing a file on disk, which exercises the watching, the reload rule and the unsaved-text rule.
 
 Run these checks:
@@ -499,3 +501,11 @@ D.7 No alert, sheet or toast other than the system pickers and the share sheet.
 Results to record, each as pass, fail or not run, with the exact error or what was seen, the device and iOS version; the Xcode version; any web change that would be needed, listed but not made.
 
 Results: (empty until run)
+
+## Recheck: drawer width and backdrop (#70), launch screen (#71), background-task warning (#72)
+
+Reported by the owner on 2026-11-27 and 2026-11-28, on the iPhone: **#70 passes** (the files drawer is as wide as Settings, over a dimmed page that a tap closes), **#71 passes** (the launch screen: the app icon on its own near-black background `#020502`, the same in light and dark mode; it does not cover the page's own start-up, and iOS caches launch screens, so delete the app to see a change) and **#72 passes** (a warning fix in `EditorSession.saveBeforeLeaving`, behavior unchanged; I suggested typing, locking the phone and reopening, and the owner did not list which steps were run, so this records "the test passes", not that check specifically). The Mac pass for #70 is recorded in `mac/HANDOFF.md`. **Not run: the iPad, for all three**; for #70 that is the one place the first open of a session may briefly show the old docked column before the first file list arrives (the page learns it is the iPhone and iPad app from that list). I did not run the iPhone checks myself; the owner did, on the iPhone.
+
+Working notes (found the hard way on 2026-11-27):
+- **The Xcode project that Claude Code's Xcode tools are attached to is a scaffold, not this app.** It is `Typewrencher iPhone and iPad Chat` (under `~/Documents/Typewrencher iPhone and iPad`) and holds only `ContentView.swift`, `MyApp.swift` and an accent color. `BuildProject` and `RunProject` through it build and run that scaffold, so a "built successfully" from them says nothing about the app; some earlier results in this file that were reported that way should be read with that in mind. Build the real project with `xcodebuild -project ios/Typewrencher.xcodeproj -scheme Typewrencher -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/tw-ios-dd CODE_SIGNING_ALLOWED=NO build`, which also reports compiler warnings. The owner builds and runs `ios/Typewrencher.xcodeproj` in Xcode.
+- **`node` is not on the PATH of a plain shell here**; run the tools through a login shell (`zsh -lic 'node tools/build-site.js ios/Typewrencher/site'`). The tests run with `node --test tests/app.test.js`.
