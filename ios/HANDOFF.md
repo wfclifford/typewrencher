@@ -446,3 +446,56 @@ Run these checks:
 Results to record, each as pass, fail or not run, with the exact error or what was seen, the device and iOS version; the Xcode version; any web change that would be needed, listed but not made.
 
 Results: (empty until run)
+
+## Task: iOS files drawer, deleting files (a spike first, then a build if it passes)
+
+Status: a proposal for the owner to correct before any code is written. Nothing built yet. Browsers and the Mac app must not change. The files drawer is now a full-screen sheet in the iOS app (#66, confirmed on the iPhone, the iPad and the Mac).
+
+**The decision being reopened.** Until now the rule was "no trash button on iOS; files are deleted in the Files app", and the app sends `trash: false` in `setFiles` (`EditorSession.sendFiles`). On 2026-11-27 the owner asked whether deleting from the drawer is viable, which reopens that rule. Everything else decided earlier still stands: plain UTF-8 `.txt` files; no alerts, sheets or toasts (feedback is inline); free Apple account; no TestFlight; no claims about iCloud beyond what has been seen.
+
+**What already exists.** The page has a per-row trash button with a two-step confirmation (the first tap arms it and reads "Delete?", the second confirms; it disarms after 4 s), always visible with a full-size target on touch screens, and a "Moved to the Trash" bar with Dismiss at the top of the drawer. The protocol has `{ type: 'trash', name }` with a reply of `{ ok: true }` or an error string that the page shows inline; `trash` in `setFiles` is sent with every list, so it can differ per list. The Mac handles it in `mac/Typewrencher/EditorSession.swift` (`trash`): the name must be a plain file name, the file must exist, trashing the open document first saves its newest text and then switches to a new empty document, a failed save refuses, and the file goes through `FileManager.trashItem`, never a permanent delete. The iOS app today handles neither `trash` nor the button (`WebEditorView.swift` handles `files` and `openFile` only).
+
+**What is not known (this is why there is a spike).** An earlier note said "iOS has no Trash for app files". That was an assumption. `FileManager.trashItem` exists on iOS, and in 2b a deleted folder was seen to go to Recently Deleted, but it has not been seen what `trashItem` does for a file in the app's own Documents folder, in a folder chosen with the picker, or in iCloud Drive; whether it can fail, and with what error; or whether the file can be recovered. As on the Mac, the app itself will not be able to restore a file (the sandbox refuses); recovery would be in the Files app's Recently Deleted.
+
+### Step 1: the spike (no shipped UI)
+
+A temporary, Debug-only hook on a branch that is never merged: it calls `FileManager.trashItem(at:resultingItemURL:)` on the open file, shows the result and the error (if any) on the notice line, and writes the `resultingItemURL` to the log. The code is thrown away; only the results below are kept in this file.
+
+Run these checks on the iPhone (and the iPad where noted):
+T.1 A file in the app's own folder: where does it go (Files > Recently Deleted, on which tab)? Can it be recovered from there? Record the `resultingItemURL`.
+T.2 A file in a folder chosen with the picker under "On My iPhone": the same.
+T.3 A file in a folder chosen in iCloud Drive: the same; does it also appear in Recently Deleted on the Mac or the other device, and how long does that take (record what is seen, no claim beyond it)?
+T.4 A file that cannot be trashed (for example, one in a folder whose access has been lost, or a read-only location if one can be found): what error does `trashItem` throw, and is anything left changed?
+T.5 The open document: trash it, then type. Does the app notice (the 2b "moved or deleted" message) and keep the text?
+T.6 The iPad: T.1 only.
+
+Decision rule after the spike (recorded in Results before anything is built): if **all** the locations in use go to a recoverable Recently Deleted, build it for all. If only some do, build it only for those: the page's `trash` flag is sent per list, so the app can send `trash: true` for a folder where it works and `trash: false` where it does not. If none do, the Files-app rule stands and this task ends.
+
+### Step 2: the build (only if the spike passes; its own pull request, after the spike's results are in)
+
+1. **Native `trash` in `EditorSession` and `WebEditorView`.** The rules follow the Mac: the name must be non-empty, contain no `/`, and be a `.txt` file that exists in the listed folder; the file is moved with `trashItem`, never `removeItem`; any failure replies with a short reason (the page shows it inline) and leaves the file, the document and the list as they were; the list is refreshed after success. It runs through the existing one-operation-at-a-time queue, and through the coordinated file access from 2c when that is merged.
+2. **The open document.** Trashing it saves its newest text first (a failed save refuses, as on the Mac), stops watching the file if 2c has added watching, then switches to a new empty untitled document in the same folder, the way New does. Trashing another file leaves the open document alone.
+3. **`setFiles` sends `trash: true`** (or per list, by the spike's decision rule).
+4. **Wording (a web change, its own pull request, a site release with the stamp, tests and the Mac recheck).** The page says "Moved to the Trash" and "Move <name> to the Trash". In the iOS app the place is Recently Deleted, so the page needs the host to say so (for example an optional label in `setFiles`) or the iOS wording must be accepted as is. Decided after the spike, listed here so it is not forgotten.
+
+Not in this task: restoring a file from inside the app, deleting a folder, deleting several files at once, swipe-to-delete, a permanent delete of any kind, and iCloud files that are not downloaded (2c).
+
+Assumptions to confirm (change them in the pull request if wrong):
+1. The two-step confirmation already in the page (arm, then confirm) is enough; no alert or sheet is added.
+2. Trashing the open document switches to a new empty one, as on the Mac.
+3. The spike's decision rule above is right, including building for only some locations.
+4. The spike comes first and independently of 2c; the build comes after 2c's coordinated file access, so the delete is coordinated like every other write.
+5. A failure is shown inline with the system's short reason; the app never falls back to a permanent delete.
+
+Checks for the build (if it is built), on the iPhone and the iPad:
+D.1 A trash button shows on every row, the first tap arms it, a second tap moves the file, and the drawer list updates.
+D.2 Arming and then waiting 4 s, or tapping elsewhere, disarms it; nothing is deleted.
+D.3 Trashing a file that is not open leaves the open document and its text untouched.
+D.4 Trashing the open document: its text is in the trashed file (check in Recently Deleted), and the app shows a new empty document.
+D.5 Where the spike found trashing impossible, no button shows, or the reason shows inline and nothing changes.
+D.6 The file is recoverable in the Files app's Recently Deleted.
+D.7 No alert, sheet or toast other than the system pickers and the share sheet.
+
+Results to record, each as pass, fail or not run, with the exact error or what was seen, the device and iOS version; the Xcode version; any web change that would be needed, listed but not made.
+
+Results: (empty until run)
