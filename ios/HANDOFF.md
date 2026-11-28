@@ -428,7 +428,7 @@ Assumptions to confirm (change them in the pull request if wrong):
 4. The live drawer refresh is a nice-to-have, built last, and dropped if it proves unreliable.
 5. File access moves off the main thread even for local files, so there is one code path.
 
-**Confirmed by the owner on 2026-11-28: all five assumptions stand as written.** The agreed order with the delete task (see "iOS files drawer, deleting files"): the delete spike first (it is independent and runs on the iPhone), then 2c step 1 (coordinated, off-main-thread file access), then the delete build (a coordinated write, so it uses that access path), then 2c watching the open file (so the app trashing its own file is handled from the start), then iCloud files that are not downloaded, then the live drawer refresh and the 2b carry-overs.
+**Confirmed by the owner on 2026-11-28: all five assumptions stand as written.** The agreed order was: the delete spike first, then 2c step 1 (coordinated, off-main-thread file access), then 2c watching the open file, then iCloud files that are not downloaded, then the live drawer refresh and the 2b carry-overs. **Update 2026-11-28: the delete spike failed its decision rule, so there is no delete build and the order is just the 2c steps** (see "iOS files drawer, deleting files").
 
 How it can be tested: the simulator has no iCloud account, so everything involving iCloud, and any edit "from another app", needs a device and usually a second device or the Mac editing the same file in iCloud Drive; the owner runs those and sends results back. In the simulator an outside change can be made by editing a file on disk, which exercises the watching, the reload rule and the unsaved-text rule.
 
@@ -452,6 +452,8 @@ Results: (empty until run)
 ## Task: iOS files drawer, deleting files (a spike first, then a build if it passes)
 
 Status: a proposal for the owner to correct before any code is written. Nothing built yet. Browsers and the Mac app must not change. The files drawer is now a full-screen sheet in the iOS app (#66, confirmed on the iPhone, the iPad and the Mac).
+
+**Decision (owner, 2026-11-28): the spike's decision rule was applied and the answer is no. There is no delete build; the rule "files are deleted in the Files app, no trash button on iOS" stands.** `FileManager.trashItem` was run on the owner's iPhone in all three kinds of location and none gave a file that Files can put back (see Results below). The spike code was never merged and its local branch was deleted (it was commit 238c2d0, never pushed). What follows (Step 2, the build, and its checks D.1 to D.7) is kept only as the record of what was proposed and is **not planned**.
 
 **The decision being reopened.** Until now the rule was "no trash button on iOS; files are deleted in the Files app", and the app sends `trash: false` in `setFiles` (`EditorSession.sendFiles`). On 2026-11-27 the owner asked whether deleting from the drawer is viable, which reopens that rule. Everything else decided earlier still stands: plain UTF-8 `.txt` files; no alerts, sheets or toasts (feedback is inline); free Apple account; no TestFlight; no claims about iCloud beyond what has been seen.
 
@@ -500,7 +502,18 @@ D.7 No alert, sheet or toast other than the system pickers and the share sheet.
 
 Results to record, each as pass, fail or not run, with the exact error or what was seen, the device and iOS version; the Xcode version; any web change that would be needed, listed but not made.
 
-Results: (empty until run)
+Results (spike, run by the owner on 2026-11-28 on the iPhone; the Debug-only hook trashed the open file and showed the outcome on the notice line; the screenshots were read by me, the checks were run by the owner):
+- **T.1, a file in the app's own folder: moved, but not recoverable through Files.** `trashItem` returned success and moved `what.txt` to `<app container>/Documents/.Trash/what.txt` (a hidden folder inside the app's own container); the original was gone. Files > Recently Deleted listed it under "On My iPhone", and Recover was offered, but using it gave the alert "The Operation Can't Be Completed. Nothing to process." (the owner reported it "cannot be recovered"; I am reading the alert in the screenshot as the result of choosing Recover). The file still exists in the hidden `.Trash`, so nothing was lost.
+- **T.2, a folder picked with the picker under "On My iPhone" (a new folder named Text): failed.** The folder was at `/var/mobile/Containers/Shared/AppGroup/<id>/File Provider Storage/Text`. `trashItem` threw `NSCocoaErrorDomain` 512: "one.txt couldn't be moved to the trash." The file stayed in place and the page still showed it open.
+- **T.3, a folder picked in iCloud Drive (`…/Mobile Documents/com~apple~CloudDocs/Documents/Plain Text Drafts 7`): moved, with no Recover.** `trashItem` returned success and moved `woooop.txt` to `/private/var/mobile/Library/Mobile Documents/.Trash/woooop.txt`; the original was gone. Recently Deleted listed it under "iCloud Drive", but its long-press menu offered only Copy, Get Info and Delete Now, with no Recover. Whether it shows in Recently Deleted on the Mac, and how fast, was not checked.
+- **Control: a file deleted in the Files app can be recovered** (owner), so the missing Recover is specific to `trashItem`. My guess, not verified, is that the API moves the file without recording where it came from, which Recover needs.
+- **T.4, a deliberate failure case: not run**; T.2 produced a real failure instead (above).
+- **T.5, trashing the open document: stuck state.** After a successful trash the document still pointed at the missing file; `+`, a rename and opening another file were all refused (each saves first, and the save fails), so only the first spike trash worked until the app was relaunched (owner-reported; the code agrees: `newDocument`, `renameNow` and `openNow` all stop when `saveNow()` fails). This confirms that any future delete must save the open document and switch to a new empty one before it trashes.
+- **T.6, the iPad: not run.**
+
+Not run, and not needed for the decision: the iPad, the cross-device iCloud check, any other kind of folder (for example another cloud provider).
+
+Alternatives considered and **not** planned: (a) an in-app soft delete (the drawer moves a file into a folder the app owns, with Restore and Delete forever), which would be a new feature with web and Swift changes and a hidden folder left in iCloud; (b) a permanent delete behind a strong confirmation, which contradicts assumption 5 (the app never deletes permanently). If deleting from the drawer is wanted again, (a) would be its own plan.
 
 ## Recheck: drawer width and backdrop (#70), launch screen (#71), background-task warning (#72)
 
